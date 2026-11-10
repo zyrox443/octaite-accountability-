@@ -1,5 +1,6 @@
 import { supabaseBrowser } from "./supabase/client";
 import type { TaskProof } from "./types";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./supabase/url";
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
@@ -29,13 +30,13 @@ export async function uploadProofFile(
   if (!session) throw new Error("Your session has expired. Sign in again.");
 
   const path = `${userId}/${taskId}/${Date.now()}-${safeName(file.name)}`;
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/proofs/${path.split("/").map(encodeURIComponent).join("/")}`;
+  const url = `${SUPABASE_URL}/storage/v1/object/proofs/${path.split("/").map(encodeURIComponent).join("/")}`;
 
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
     xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
-    xhr.setRequestHeader("apikey", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    xhr.setRequestHeader("apikey", SUPABASE_ANON_KEY);
     xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
     xhr.setRequestHeader("x-upsert", "false");
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
