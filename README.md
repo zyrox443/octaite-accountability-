@@ -11,6 +11,7 @@ A daily accountability app for a small team. Members plan their day, upload proo
 |---|---|
 | `supabase/migrations/20261110000000_init.sql` | The whole database: tables, security rules, storage bucket and policies, the 5-minute cron job |
 | `supabase/migrations/20261110010000_signup_reminders.sql` | Update 2: sign-up with approval, profile pictures, reminders |
+| `supabase/go_live.sql` | Removes all sample data and creates your admin account |
 | `supabase/seed.sql` | Sample data: 1 admin, 4 members, sample tasks |
 | `.env.example` | The three keys the app needs |
 | `app/`, `components/`, `lib/` | The application code |
@@ -103,6 +104,8 @@ Every sample account uses the password `ChangeMe123!`
 
 ### 9. Switch to your real accounts
 
+The quickest way: open `supabase/go_live.sql`, set your email, password and name at the top, paste it into the SQL Editor and click **Run**. It deletes every sample account and task and creates your admin login. Then share the `/signup` link with your team. The manual steps below do the same thing.
+
 1. **Your own admin login.** In Supabase open **Authentication** > **Users** > **Add user**, enter your real email and a password, and tick **Auto Confirm User**. Then in the **SQL Editor** run (with your email and name):
 
    ```sql
@@ -159,6 +162,7 @@ Submitted -> Rejected -> back to Pending (or Overdue if the due time has passed)
 - On the Dashboard, **Remind** next to an overdue task or a member with no plan sends that member a bell notification. **Remind all** covers everyone with no plan.
 - On a member's page, **Download report (PDF)** and **CSV** export their tasks, hours and on-time record for the chosen date range.
 - A member can have several job roles. Edit them on the **Team** page.
+- Everyone can change their own picture, name and password under the avatar menu > **Edit profile**.
 
 ### Leaderboard
 - Hours = the sum of estimated hours of **approved** tasks only.

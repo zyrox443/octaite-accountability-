@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, CheckCheck, LogOut, Menu, Moon, Sun, X } from "lucide-react";
+import { Bell, CheckCheck, LogOut, Menu, Moon, Sun, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -203,9 +203,12 @@ function TopNav() {
                       <p className="truncate text-xs text-muted">{profile.title || profile.email}</p>
                     </div>
                   </div>
+                  <Link href="/profile" className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line-strong text-sm font-medium">
+                    <UserRound size={16} /> Edit profile
+                  </Link>
                   <button
                     onClick={signOut}
-                    className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line-strong text-sm font-medium"
+                    className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line-strong text-sm font-medium"
                   >
                     <LogOut size={16} /> Sign out
                   </button>
@@ -289,6 +292,9 @@ function UserMenu({ className }: { className?: string }) {
                 {profile.role === "admin" ? "Admin" : profile.title || "Member"}
               </p>
             </div>
+            <Link href="/profile" onClick={() => setOpen(false)} className="flex min-h-11 w-full items-center gap-2 px-3 text-sm hover:bg-surface-2">
+              <UserRound size={16} /> Edit profile
+            </Link>
             <button onClick={signOut} className="flex min-h-11 w-full items-center gap-2 px-3 text-sm hover:bg-surface-2">
               <LogOut size={16} /> Sign out
             </button>

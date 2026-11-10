@@ -63,8 +63,9 @@ type AuthState = {
   loading: boolean;
   error: string | null;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
-const AuthCtx = createContext<AuthState>({ profile: null, loading: true, error: null, signOut: async () => {} });
+const AuthCtx = createContext<AuthState>({ profile: null, loading: true, error: null, signOut: async () => {}, refreshProfile: async () => {} });
 export const useAuth = () => useContext(AuthCtx);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -112,7 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [router]);
 
-  const value = useMemo(() => ({ profile, loading, error, signOut }), [profile, loading, error, signOut]);
+  const refreshProfile = useCallback(async () => {
+    const sb = supabaseBrowser();
+    const {
+      data: { user },
+    } = await sb.auth.getUser();
+    if (!user) return;
+    const { data } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    if (data) setProfile(data as Profile);
+  }, []);
+
+  const value = useMemo(() => ({ profile, loading, error, signOut, refreshProfile }), [profile, loading, error, signOut, refreshProfile]);
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
