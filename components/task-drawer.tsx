@@ -12,6 +12,9 @@ import { Avatar, Button, Drawer, Field, Skeleton, StatusBadge, cx, inputClass, u
 
 type Upload = { id: number; name: string; progress: number; error?: string };
 
+// Unsent notes, kept per task so closing the drawer by accident loses nothing.
+const noteDrafts = new Map<string, string>();
+
 export function TaskDrawer({
   task,
   mode,
@@ -64,7 +67,7 @@ export function TaskDrawer({
     setReason("");
     setReasonError("");
     setConfirmDelete(false);
-    setNote("");
+    setNote(taskId ? (noteDrafts.get(taskId) ?? "") : "");
     if (taskId) loadProofs(taskId);
   }, [taskId, loadProofs]);
 
@@ -140,6 +143,7 @@ export function TaskDrawer({
       setSubmitError(error.message);
       return;
     }
+    noteDrafts.delete(task.id);
     toast({ title: "Submitted for approval", body: task.title, tone: "success" });
     onChanged();
     onClose();
@@ -413,7 +417,10 @@ export function TaskDrawer({
                 </Field>
 
                 <Field label="What was done" hint="A short note for the admin.">
-                  {(p) => <textarea {...p} rows={3} className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} />}
+                  {(p) => <textarea {...p} rows={3} className={inputClass} value={note} onChange={(e) => {
+                    setNote(e.target.value);
+                    if (taskId) noteDrafts.set(taskId, e.target.value);
+                  }} />}
                 </Field>
                 {submitError ? (
                   <p role="alert" className="text-[13px] text-danger">

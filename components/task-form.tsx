@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { addDays, pkDate, pkHM, pkToISO } from "@/lib/time";
 import type { Profile, Task } from "@/lib/types";
@@ -40,10 +40,16 @@ export function TaskFormModal({
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
 
+  // A half-filled new task survives the form being closed by accident
+  // (X or Escape). It is cleared only by Cancel or a successful save.
+  const keepDraft = useRef(false);
+
   useEffect(() => {
     if (!open) return;
     setErrors({});
+    if (!task && keepDraft.current) return;
     if (task) {
+      keepDraft.current = false;
       setTitle(task.title);
       setDescription(task.description);
       setHours(String(task.estimated_hours));
@@ -64,8 +70,14 @@ export function TaskFormModal({
       setDueDate(nowHM >= "23:30" ? addDays(today, 1) : today);
       setDueTime(nowHM < "17:00" || nowHM >= "23:30" ? "18:00" : "23:59");
       setOwner(userId);
+      keepDraft.current = true;
     }
   }, [open, task, userId]);
+
+  function discard() {
+    keepDraft.current = false;
+    onClose();
+  }
 
   async function save() {
     const e: Errors = {};
@@ -105,6 +117,7 @@ export function TaskFormModal({
       return;
     }
     toast({ title: editing ? "Task updated" : "Task added", tone: "success" });
+    keepDraft.current = false;
     onSaved();
     onClose();
   }
@@ -116,7 +129,7 @@ export function TaskFormModal({
       title={editing ? "Edit task" : "Add task"}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={discard}>Cancel</Button>
           <Button variant="primary" onClick={save} loading={busy}>
             {editing ? "Save changes" : "Add task"}
           </Button>

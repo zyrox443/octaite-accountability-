@@ -516,6 +516,8 @@ function useOverlay(open: boolean, onClose: () => void) {
   }, [open, onClose]);
 }
 
+/* Forms live in modals, so a stray click on the dimmed background must not
+   close them and throw away what was typed. Close with X, Cancel or Escape. */
 export function Modal({
   open,
   onClose,
@@ -541,7 +543,6 @@ export function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          onMouseDown={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div
             role="dialog"
