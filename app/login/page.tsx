@@ -32,10 +32,16 @@ export default function LoginPage() {
     const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
     if (error || !data.user) {
       setBusy(false);
+      const msg = error?.message ?? "";
+      const lower = msg.toLowerCase();
       setErrors({
-        form: error?.message.toLowerCase().includes("banned")
+        form: lower.includes("banned")
           ? "This account has been deactivated. Ask your admin to enable it."
-          : "Email or password is incorrect.",
+          : lower.includes("invalid login credentials")
+            ? "Email or password is incorrect."
+            : lower.includes("api key") || lower.includes("fetch") || lower.includes("jwt")
+              ? `Cannot reach the database. Check the Supabase URL and keys in Vercel, then redeploy. (${msg})`
+              : `Sign-in failed: ${msg || "unknown error"}`,
       });
       return;
     }
