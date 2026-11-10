@@ -1,4 +1,4 @@
-# Daybook - Team Accountability
+# Octaite Accountability
 
 A daily accountability app for a small team. Members plan their day, upload proof of work, and the admin approves it. Approved hours feed a leaderboard.
 
@@ -23,7 +23,7 @@ You need a free [Supabase](https://supabase.com) account, a free [Vercel](https:
 ### 1. Create the Supabase project
 
 1. Go to <https://supabase.com/dashboard> and click **New project**.
-2. Give it a name (for example `daybook`), set a database password and save it somewhere safe.
+2. Give it a name (for example `octaite-accountability`), set a database password and save it somewhere safe.
 3. Choose the region closest to Pakistan (Mumbai or Singapore) and click **Create new project**. Wait about 2 minutes.
 
 ### 2. Enable pg_cron

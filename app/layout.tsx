@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Daybook - Team accountability",
+  title: "Octaite Accountability",
   description: "Daily task planning, proof of work and approvals for small teams.",
 };
 

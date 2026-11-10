@@ -108,9 +108,9 @@ function TopNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
       <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-2 px-4 sm:px-6 lg:px-8">
-        <Link href={profile?.role === "admin" ? "/admin" : "/my-day"} className="flex min-h-11 items-center gap-2.5 pr-2" aria-label="Daybook home">
-          <span className="flex h-7 w-7 items-center justify-center bg-accent text-[13px] font-bold text-on-accent">D</span>
-          <span className="text-[15px] font-semibold tracking-tight">Daybook</span>
+        <Link href={profile?.role === "admin" ? "/admin" : "/my-day"} className="flex min-h-11 items-center gap-2.5 pr-2" aria-label="Octaite Accountability home">
+          <span className="flex h-7 w-7 items-center justify-center bg-accent text-[13px] font-bold text-on-accent">O</span>
+          <span className="text-[15px] font-semibold tracking-tight">Octaite Accountability</span>
         </Link>
 
         <nav className="mx-auto hidden h-full items-stretch md:flex" aria-label="Main">

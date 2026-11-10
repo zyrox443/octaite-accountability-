@@ -53,8 +53,8 @@ export default function LoginPage() {
     <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
       <aside className="hidden flex-col justify-between border-r border-line bg-surface p-12 lg:flex">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center bg-accent text-sm font-bold text-on-accent">D</span>
-          <span className="text-base font-semibold tracking-tight">Daybook</span>
+          <span className="flex h-8 w-8 items-center justify-center bg-accent text-sm font-bold text-on-accent">O</span>
+          <span className="text-base font-semibold tracking-tight">Octaite Accountability</span>
         </div>
         <div>
           <h2 className="max-w-md text-[34px] font-semibold leading-[1.15] tracking-tight">
@@ -87,8 +87,8 @@ export default function LoginPage() {
           transition={{ duration: 0.25, ease: "easeOut" }}
         >
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <span className="flex h-8 w-8 items-center justify-center bg-accent text-sm font-bold text-on-accent">D</span>
-            <span className="text-base font-semibold tracking-tight">Daybook</span>
+            <span className="flex h-8 w-8 items-center justify-center bg-accent text-sm font-bold text-on-accent">O</span>
+            <span className="text-base font-semibold tracking-tight">Octaite Accountability</span>
           </div>
           <h1 className="text-[28px] font-semibold leading-tight">Sign in</h1>
           <p className="mt-1 text-sm text-muted">Use the email and password your admin gave you.</p>

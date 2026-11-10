@@ -31,7 +31,7 @@ create table public.profiles (
 
 create table public.settings (
   id              smallint primary key default 1 check (id = 1),
-  company_name    text not null default 'My Company',
+  company_name    text not null default 'Octaite',
   timezone        text not null default 'Asia/Karachi',
   no_plan_cutoff  time not null default '11:00',
   -- ISO weekday numbers (1 = Monday ... 7 = Sunday) on which the
