@@ -113,7 +113,7 @@ function TopNav() {
           <span className="text-[15px] font-semibold tracking-tight">Octaite Accountability</span>
         </Link>
 
-        <nav className="mx-auto hidden h-full items-stretch md:flex" aria-label="Main">
+        <nav className="mx-auto hidden h-full items-stretch lg:flex" aria-label="Main">
           {links.map((l) => {
             const active = isActive(path, l.href);
             return (
@@ -139,11 +139,11 @@ function TopNav() {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center md:ml-0">
+        <div className="ml-auto flex items-center lg:ml-0">
           {profile ? <NotificationBell /> : null}
           <ThemeToggle />
-          {profile ? <UserMenu className="hidden md:block" /> : null}
-          <IconButton label="Open menu" className="md:hidden" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen}>
+          {profile ? <UserMenu className="hidden lg:block" /> : null}
+          <IconButton label="Open menu" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen}>
             <Menu size={20} />
           </IconButton>
         </div>
@@ -152,7 +152,7 @@ function TopNav() {
       <AnimatePresence>
         {menuOpen ? (
           <motion.div
-            className="fixed inset-0 z-50 bg-backdrop md:hidden"
+            className="fixed inset-0 z-50 bg-backdrop lg:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
