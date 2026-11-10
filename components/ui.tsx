@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
-import { AlertTriangle, Check, X } from "lucide-react";
+import { AlertTriangle, Check, Eye, EyeOff, X } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
   type ReactNode,
 } from "react";
 import type { DisplayStatus } from "@/lib/types";
@@ -120,6 +121,26 @@ export function Field({
           {hint}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** Password field with a show / hide (eye) button. */
+export function PasswordInput({ className, ...rest }: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input {...rest} type={show ? "text" : "password"} className={cx(inputClass, "pr-12", className)} />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        aria-label={show ? "Hide password" : "Show password"}
+        aria-pressed={show}
+        title={show ? "Hide password" : "Show password"}
+        className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full text-muted transition-[color,transform] duration-200 hover:text-ink active:scale-90"
+      >
+        {show ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
     </div>
   );
 }

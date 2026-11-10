@@ -3,7 +3,7 @@
 import { Camera, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/providers";
-import { Avatar, Button, Field, PageHeader, inputClass, useToast } from "@/components/ui";
+import { Avatar, Button, Field, PageHeader, PasswordInput, inputClass, useToast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { splitRoles } from "@/lib/types";
 
@@ -164,10 +164,10 @@ export default function ProfilePage() {
         <form onSubmit={changePassword} noValidate className="card flex flex-col gap-4 self-start p-5 sm:p-6">
           <h2 className="text-lg font-semibold">Password</h2>
           <Field label="New password" error={pwErrors.pw} hint="At least 8 characters.">
-            {(p) => <input {...p} type="password" className={inputClass} value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />}
+            {(p) => <PasswordInput {...p} value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />}
           </Field>
           <Field label="Repeat new password" error={pwErrors.pw2}>
-            {(p) => <input {...p} type="password" className={inputClass} value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />}
+            {(p) => <PasswordInput {...p} value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />}
           </Field>
           <Button type="submit" loading={pwBusy} disabled={!pw} className="self-start">
             Change password

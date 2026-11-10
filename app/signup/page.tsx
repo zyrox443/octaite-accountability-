@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Camera, CircleCheckBig } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Button, Field, RolesInput, inputClass } from "@/components/ui";
+import { Button, Field, RolesInput, PasswordInput, inputClass } from "@/components/ui";
 import { initials } from "@/lib/time";
 import { ROLE_PRESETS, joinRoles } from "@/lib/types";
 
@@ -156,7 +156,7 @@ export default function SignupPage() {
                 }} autoComplete="email" placeholder="you@company.com" />}
               </Field>
               <Field label="Password" error={errors.password} hint="At least 8 characters.">
-                {(p) => <input {...p} type="password" className={inputClass} value={password} onChange={(e) => {
+                {(p) => <PasswordInput {...p} value={password} onChange={(e) => {
                   setPassword(e.target.value);
                   clear("password");
                 }} autoComplete="new-password" />}

@@ -5,7 +5,7 @@ import { ClipboardCheck, ShieldCheck, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, Field, inputClass } from "@/components/ui";
+import { Button, Field, PasswordInput, inputClass } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -115,7 +115,7 @@ export default function LoginPage() {
             </Field>
             <Field label="Password" error={errors.password}>
               {(p) => (
-                <input {...p} type="password" autoComplete="current-password" className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <PasswordInput {...p} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
               )}
             </Field>
             <Button type="submit" variant="primary" loading={busy} className="mt-2 w-full">
