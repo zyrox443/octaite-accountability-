@@ -41,11 +41,12 @@ function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const isAdminRoute = path.startsWith("/admin");
-  const blocked = !!profile && isAdminRoute && profile.role !== "admin";
+  const adminOnMyDay = !!profile && profile.role === "admin" && path === "/my-day";
+  const blocked = (!!profile && isAdminRoute && profile.role !== "admin") || adminOnMyDay;
 
   useEffect(() => {
-    if (blocked) router.replace("/my-day");
-  }, [blocked, router]);
+    if (blocked) router.replace(adminOnMyDay ? "/admin" : "/my-day");
+  }, [blocked, adminOnMyDay, router]);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -93,7 +94,7 @@ function TopNav() {
   const { profile, signOut } = useAuth();
   const path = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const links = profile ? (profile.role === "admin" ? [...memberLinks, ...adminLinks] : memberLinks) : [];
+  const links = profile ? (profile.role === "admin" ? [adminLinks[0], adminLinks[1], adminLinks[2], memberLinks[1], adminLinks[3]] : memberLinks) : [];
 
   useEffect(() => setMenuOpen(false), [path]);
   useEffect(() => {
@@ -196,7 +197,7 @@ function TopNav() {
               {profile ? (
                 <div className="border-t border-line p-4">
                   <div className="flex items-center gap-3">
-                    <Avatar name={profile.full_name} />
+                    <Avatar name={profile.full_name} src={profile.avatar_url} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{profile.full_name}</p>
                       <p className="truncate text-xs text-muted">{profile.title || profile.email}</p>
@@ -269,7 +270,7 @@ function UserMenu({ className }: { className?: string }) {
         aria-expanded={open}
         className="flex h-11 w-11 items-center justify-center"
       >
-        <Avatar name={profile.full_name} size={32} />
+        <Avatar name={profile.full_name} size={32} src={profile.avatar_url} />
       </button>
       <AnimatePresence>
         {open ? (
@@ -300,6 +301,7 @@ function UserMenu({ className }: { className?: string }) {
 
 function notifHref(n: Notification, admin: boolean) {
   if (!admin) return "/my-day";
+  if (n.type === "signup_request") return "/admin/team";
   if (n.type === "task_submitted") return "/admin/approvals";
   if (n.type === "no_plan" && n.subject_user_id) return `/admin/team/${n.subject_user_id}`;
   return "/admin";

@@ -97,7 +97,7 @@ export default function LeaderboardPage() {
                   className="flex items-center gap-3 border-b border-line p-4 last:border-b-0 sm:gap-4"
                 >
                   <span className="w-6 flex-none text-center text-lg font-semibold text-accent-ink tnum">{i + 4}</span>
-                  <Avatar name={r.full_name} />
+                  <Avatar name={r.full_name} src={r.avatar_url} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="truncate text-sm font-medium">{r.full_name}</p>
@@ -159,7 +159,7 @@ function Podium({ rows, leader }: { rows: LeaderRow[]; leader: number }) {
                   <Crown size={24} fill="currentColor" />
                 </motion.span>
               ) : null}
-              <Avatar name={row.full_name} size={first ? 56 : 44} accent={first} />
+              <Avatar name={row.full_name} size={first ? 56 : 44} accent={first} src={row.avatar_url} />
               <p
                 className={cx(
                   "mt-2 w-full truncate text-[13px] font-semibold sm:text-[15px]",

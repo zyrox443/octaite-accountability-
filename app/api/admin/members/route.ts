@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     }
     const { error: pErr } = await admin
       .from("profiles")
-      .upsert({ id: data.user.id, email, full_name, title, role: "member", is_active: true });
+      .upsert({ id: data.user.id, email, full_name, title, role: "member", is_active: true, pending_approval: false });
     if (pErr) {
       await admin.auth.admin.deleteUser(data.user.id);
       return NextResponse.json({ error: pErr.message }, { status: 500 });

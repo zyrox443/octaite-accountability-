@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, ClipboardList } from "lucide-react";
+import { ArrowLeft, ClipboardList, FileDown, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -9,9 +9,10 @@ import { useAuth, useTableChanges, useTick } from "@/components/providers";
 import { TaskCard, overdueText } from "@/components/task-card";
 import { TaskDrawer } from "@/components/task-drawer";
 import { TaskFormModal } from "@/components/task-form";
-import { Avatar, EmptyState, ErrorState, Field, Skeleton, StatCard, StatusBadge, cx, inputClass, stagger, staggerItem } from "@/components/ui";
+import { Avatar, Button, EmptyState, ErrorState, Field, Skeleton, StatCard, StatusBadge, cx, inputClass, stagger, staggerItem } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { addDays, fmtDateTime, fmtDay, fmtHours, pkDate } from "@/lib/time";
+import { downloadCsv, downloadPdf } from "@/lib/report";
 import { displayStatus, normalizeTask, type Profile, type Task } from "@/lib/types";
 
 function weekStart(d: string) {
@@ -31,6 +32,7 @@ export default function EmployeeDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [exporting, setExporting] = useState(false);
   useTick();
 
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function EmployeeDetailPage() {
 
       <div className="mb-6 flex flex-col gap-4 sm:mb-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          {member ? <Avatar name={member.full_name} size={52} /> : <Skeleton className="h-[52px] w-[52px]" />}
+          {member ? <Avatar name={member.full_name} size={56} src={member.avatar_url} /> : <Skeleton className="h-[52px] w-[52px]" />}
           <div className="min-w-0">
             <h1 className="truncate text-[28px] font-semibold leading-tight">{member?.full_name ?? "Member"}</h1>
             <p className="truncate text-sm text-muted">
@@ -123,7 +125,7 @@ export default function EmployeeDetailPage() {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         {presets.map((p) => {
           const active = p.from === from && p.to === to;
           return (
@@ -143,6 +145,34 @@ export default function EmployeeDetailPage() {
             </button>
           );
         })}
+        <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
+          <Button
+            variant="primary"
+            size="sm"
+            className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+            disabled={!member || tasks === null}
+            loading={exporting}
+            onClick={async () => {
+              if (!member || !tasks) return;
+              setExporting(true);
+              try {
+                await downloadPdf(member, [...tasks].reverse(), from, to);
+              } finally {
+                setExporting(false);
+              }
+            }}
+          >
+            <FileDown size={15} /> Download report (PDF)
+          </Button>
+          <Button
+            size="sm"
+            className="min-h-11 sm:min-h-9"
+            disabled={!member || tasks === null}
+            onClick={() => member && tasks && downloadCsv(member, [...tasks].reverse(), from, to)}
+          >
+            <FileSpreadsheet size={15} /> CSV
+          </Button>
+        </div>
       </div>
 
       {error ? (

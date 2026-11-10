@@ -10,6 +10,7 @@ A daily accountability app for a small team. Members plan their day, upload proo
 | Path | What it is |
 |---|---|
 | `supabase/migrations/20261110000000_init.sql` | The whole database: tables, security rules, storage bucket and policies, the 5-minute cron job |
+| `supabase/migrations/20261110010000_signup_reminders.sql` | Update 2: sign-up with approval, profile pictures, reminders |
 | `supabase/seed.sql` | Sample data: 1 admin, 4 members, sample tasks |
 | `.env.example` | The three keys the app needs |
 | `app/`, `components/`, `lib/` | The application code |
@@ -39,7 +40,8 @@ pg_cron is what marks tasks as Overdue every 5 minutes.
 
 1. In the left sidebar open **SQL Editor** and click **New query**.
 2. Open `supabase/migrations/20261110000000_init.sql` from this folder, copy everything, paste it into the editor and click **Run**. You should see "Success".
-3. Click **New query** again. Copy everything from `supabase/seed.sql`, paste and **Run**.
+3. Click **New query** again and do the same with `supabase/migrations/20261110010000_signup_reminders.sql`.
+4. Click **New query** again. Copy everything from `supabase/seed.sql`, paste and **Run** (optional sample data).
 
 Run the migration only once. If you ever need to start again, the simplest way is to create a fresh Supabase project.
 
@@ -52,12 +54,12 @@ The SQL already created a private bucket called `proofs` with a 50 MB file limit
 
 ### 5. Turn off public sign-up
 
-Only the admin should create accounts.
+Team members sign up through the app's own sign-up page, which goes through the server, so Supabase's public sign-up can stay off.
 
 1. Open **Authentication** > **Sign In / Providers** (on some dashboards: **Authentication** > **Settings**).
 2. Switch **Allow new users to sign up** off and save.
 
-Even if you skip this, anyone who signs up on their own gets an inactive profile and can see nothing. Turning it off is still the cleaner setting.
+The app's sign-up page keeps working with this switched off.
 
 ### 6. Copy your keys
 
@@ -109,7 +111,7 @@ Every sample account uses the password `ChangeMe123!`
    where email = 'you@yourcompany.com';
    ```
 
-2. Sign in to the app with that account, open **Team**, and create your four real members with **Add member**.
+2. Send your team the sign-up link: your site address followed by `/signup`. Each person enters their name, email, password, an optional profile picture and their role or roles. You get a bell notification, and they cannot sign in until you click **Approve** on the **Team** page. You can also create accounts yourself with **Add member**.
 3. Remove the sample people and their sample tasks. In the SQL Editor run:
 
    ```sql
@@ -130,7 +132,7 @@ Every sample account uses the password `ChangeMe123!`
 ## How it works
 
 ### Roles
-- **Admin** sees everything, approves or rejects proof, edits or deletes any task, and manages members.
+- **Admin** lands on the Dashboard, sees everything, approves or rejects proof, edits or deletes any task, and manages members.
 - **Member** sees and works with only their own tasks.
 
 These rules are enforced inside the database (Row Level Security and triggers), not only in the screens.
@@ -152,6 +154,11 @@ Submitted -> Rejected -> back to Pending (or Overdue if the due time has passed)
 - pg_cron runs `run_scheduled_checks()` every 5 minutes. It marks late Pending tasks as Overdue and writes a notification for the admin (and the member).
 - The same check also runs whenever My Day or the Dashboard opens, so the screen is never stale.
 - After the cutoff time (11:00 AM PKT by default, editable in **Settings**) members with no tasks for today are listed under **No plan today** and the admin gets one alert per member per day. The alert only fires on the working days chosen in Settings (Monday to Saturday by default).
+
+### Reminders and reports
+- On the Dashboard, **Remind** next to an overdue task or a member with no plan sends that member a bell notification. **Remind all** covers everyone with no plan.
+- On a member's page, **Download report (PDF)** and **CSV** export their tasks, hours and on-time record for the chosen date range.
+- A member can have several job roles. Edit them on the **Team** page.
 
 ### Leaderboard
 - Hours = the sum of estimated hours of **approved** tasks only.

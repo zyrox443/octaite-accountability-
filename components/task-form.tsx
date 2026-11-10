@@ -160,20 +160,20 @@ export function TaskFormModal({
             <input {...p} type="number" inputMode="decimal" min="0.25" max="24" step="0.25" className={inputClass + " tnum"} value={hours} onChange={(e) => setHours(e.target.value)} placeholder="1.5" />
           )}
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-4">
           <Field label="Planned start" error={errors.start}>
             {(p) => (
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <input {...p} type="date" className={inputClass + " tnum"} value={startDate} min={editing ? undefined : pkDate()} onChange={(e) => setStartDate(e.target.value)} />
-                <input aria-label="Planned start time" type="time" className={inputClass + " tnum"} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,140px)] gap-2">
+                <input {...p} type="date" className={inputClass + " min-w-0 tnum"} value={startDate} min={editing ? undefined : pkDate()} onChange={(e) => setStartDate(e.target.value)} />
+                <input aria-label="Planned start time" type="time" className={inputClass + " min-w-0 tnum"} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
               </div>
             )}
           </Field>
           <Field label="Due" error={errors.due}>
             {(p) => (
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <input {...p} type="date" className={inputClass + " tnum"} value={dueDate} min={editing ? undefined : pkDate()} onChange={(e) => setDueDate(e.target.value)} />
-                <input aria-label="Due time" type="time" className={inputClass + " tnum"} value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,140px)] gap-2">
+                <input {...p} type="date" className={inputClass + " min-w-0 tnum"} value={dueDate} min={editing ? undefined : pkDate()} onChange={(e) => setDueDate(e.target.value)} />
+                <input aria-label="Due time" type="time" className={inputClass + " min-w-0 tnum"} value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
               </div>
             )}
           </Field>

@@ -198,7 +198,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           const n = payload.new as Notification;
           setItems((list) => (list.some((x) => x.id === n.id) ? list : [n, ...list].slice(0, 60)));
           setShake((s) => s + 1);
-          toast({ title: n.title, body: n.body, tone: n.type === "task_approved" ? "success" : n.type === "task_submitted" ? "info" : "error" });
+          toast({ title: n.title, body: n.body, tone: n.type === "task_approved" ? "success" : n.type === "task_submitted" || n.type === "reminder" || n.type === "signup_request" ? "info" : "error" });
         },
       )
       .subscribe();

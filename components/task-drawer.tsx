@@ -23,7 +23,7 @@ export function TaskDrawer({
 }: {
   task: Task | null;
   mode: "member" | "admin";
-  owner?: Pick<Profile, "full_name" | "title"> | null;
+  owner?: Pick<Profile, "full_name" | "title" | "avatar_url"> | null;
   currentUserId: string;
   onClose: () => void;
   onChanged: () => void;
@@ -239,7 +239,7 @@ export function TaskDrawer({
           <div>
             {owner ? (
               <div className="mb-3 flex items-center gap-2.5">
-                <Avatar name={owner.full_name} size={28} />
+                <Avatar name={owner.full_name} size={32} src={owner.avatar_url} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{owner.full_name}</p>
                   <p className="truncate text-xs text-muted">{owner.title}</p>

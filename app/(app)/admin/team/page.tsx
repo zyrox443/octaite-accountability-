@@ -4,10 +4,10 @@ import { motion } from "framer-motion";
 import { KeyRound, Pencil, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/components/providers";
-import { Avatar, Button, EmptyState, ErrorState, Field, Modal, PageHeader, Skeleton, cx, inputClass, stagger, staggerItem, useToast } from "@/components/ui";
+import { useAuth, useTableChanges } from "@/components/providers";
+import { Avatar, Button, EmptyState, ErrorState, Field, Modal, PageHeader, RolesInput, Skeleton, cx, inputClass, stagger, staggerItem, useToast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { Profile } from "@/lib/types";
+import { ROLE_PRESETS, joinRoles, splitRoles, type Profile } from "@/lib/types";
 
 function randomPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -31,14 +31,28 @@ export default function TeamPage() {
   useEffect(() => {
     load();
   }, [load]);
+  useTableChanges(["profiles"], load);
+  const toast = useToast();
+
+  async function approve(p: Profile) {
+    const res = await fetch(`/api/admin/members/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: true }),
+    });
+    if (!res.ok) return toast({ title: "Could not approve", body: (await res.json().catch(() => ({}))).error, tone: "error" });
+    toast({ title: `${p.full_name} approved`, body: "They can sign in now.", tone: "success" });
+    load();
+  }
 
   const members = people?.filter((p) => p.role === "member") ?? [];
+  const sorted = people ? [...people].sort((a, b) => Number(b.pending_approval) - Number(a.pending_approval)) : [];
 
   return (
     <div>
       <PageHeader
         title="Team"
-        subtitle="Only you can create accounts. There is no public sign-up."
+        subtitle="Add members yourself, or share the sign-up link and approve them here."
         actions={
           <Button variant="primary" onClick={() => setCreating(true)}>
             <UserPlus size={16} /> Add member
@@ -74,14 +88,14 @@ export default function TeamPage() {
             <span className="text-right">Actions</span>
           </div>
           <motion.ul variants={stagger} initial="hidden" animate="show" className="flex flex-col gap-2.5 md:gap-0">
-            {people.map((p) => (
+            {sorted.map((p) => (
               <motion.li
                 key={p.id}
                 variants={staggerItem}
-                className="card p-4 md:rounded-none md:shadow-none md:bg-transparent md:grid md:grid-cols-[1.4fr_1fr_1.4fr_110px_170px] md:items-center md:gap-4 md:border-0 md:border-b md:px-5 md:py-3 md:last:border-b-0"
+                className="card p-4 md:rounded-none md:shadow-none md:bg-transparent md:grid md:grid-cols-[1.3fr_1.2fr_1.3fr_100px_180px] md:items-center md:gap-4 md:border-0 md:border-b md:px-5 md:py-3 md:last:border-b-0"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <Avatar name={p.full_name} accent={p.role === "admin"} />
+                  <Avatar name={p.full_name} accent={p.role === "admin"} src={p.avatar_url} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{p.full_name}</p>
                     <p className="truncate text-xs text-muted md:hidden">{p.title || (p.role === "admin" ? "Admin" : "")}</p>
@@ -93,18 +107,22 @@ export default function TeamPage() {
                   <span
                     className="inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
                     style={
-                      p.role === "admin"
+                      p.role === "admin" || p.pending_approval
                         ? { color: "var(--accent-ink)", background: "var(--accent-tint)" }
                         : p.is_active
                           ? { color: "var(--st-approved-fg)", background: "var(--st-approved-bg)" }
                           : { color: "var(--st-pending-fg)", background: "var(--st-pending-bg)" }
                     }
                   >
-                    {p.role === "admin" ? "Admin" : p.is_active ? "Active" : "Inactive"}
+                    {p.role === "admin" ? "Admin" : p.pending_approval ? "Pending" : p.is_active ? "Active" : "Inactive"}
                   </span>
                 </div>
                 <div className={cx("mt-3 flex gap-2 md:mt-0 md:justify-end")}>
-                  {p.role === "member" ? (
+                  {p.pending_approval ? (
+                    <Button variant="primary" size="sm" className="min-h-11 flex-1 md:min-h-9 md:flex-none" onClick={() => approve(p)}>
+                      Approve
+                    </Button>
+                  ) : p.role === "member" ? (
                     <Link
                       href={`/admin/team/${p.id}`}
                       className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-line-strong px-3 text-[13px] font-medium transition-colors hover:border-accent md:min-h-9 md:flex-none"
@@ -145,7 +163,8 @@ function MemberModal({
   const editing = !!member;
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [title, setTitle] = useState("");
+  const [roles, setRoles] = useState<string[]>([]);
+  const title = joinRoles(roles);
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<"" | "save" | "toggle">("");
@@ -155,7 +174,7 @@ function MemberModal({
     setErrors({});
     setFullName(member?.full_name ?? "");
     setEmail(member?.email ?? "");
-    setTitle(member?.title ?? "");
+    setRoles(splitRoles(member?.title));
     setPassword("");
   }, [open, member]);
 
@@ -211,7 +230,7 @@ function MemberModal({
         <>
           {editing && !isSelf && member!.role === "member" ? (
             <Button variant={member!.is_active ? "danger" : "secondary"} className="mr-auto" onClick={toggleActive} loading={busy === "toggle"}>
-              {member!.is_active ? "Deactivate" : "Reactivate"}
+              {member!.is_active ? "Deactivate" : member!.pending_approval ? "Approve" : "Reactivate"}
             </Button>
           ) : null}
           <Button onClick={onClose}>Cancel</Button>
@@ -240,9 +259,11 @@ function MemberModal({
         <Field label="Email" error={errors.email} hint={editing ? "The sign-in email cannot be changed here." : undefined}>
           {(p) => <input {...p} type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} disabled={editing} autoComplete="off" />}
         </Field>
-        <Field label="Role / title" hint="For example Video Editor, GHL Expert or AI Engineer.">
-          {(p) => <input {...p} className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} autoComplete="off" />}
-        </Field>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium">Roles</span>
+          <span className="text-xs text-muted">A member can have more than one. Tap to add or remove.</span>
+          <RolesInput value={roles} onChange={setRoles} presets={ROLE_PRESETS} />
+        </div>
         <Field
           label={editing ? "New password" : "Password"}
           error={errors.password}
@@ -257,7 +278,7 @@ function MemberModal({
             </div>
           )}
         </Field>
-        {editing && member && !member.is_active ? (
+        {editing && member && !member.is_active && !member.pending_approval ? (
           <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13px] text-muted">This account is inactive and cannot sign in.</p>
         ) : null}
         <button type="submit" className="hidden" aria-hidden tabIndex={-1} />

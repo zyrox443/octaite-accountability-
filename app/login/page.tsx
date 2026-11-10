@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ClipboardCheck, ShieldCheck, Trophy } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Field, inputClass } from "@/components/ui";
@@ -16,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("reason") === "inactive") {
-      setErrors({ form: "This account is not active. Ask your admin to enable it." });
+      setErrors({ form: "This account is waiting for admin approval, or has been deactivated." });
     }
   }, []);
 
@@ -49,7 +50,7 @@ export default function LoginPage() {
     if (!profile?.is_active) {
       await sb.auth.signOut();
       setBusy(false);
-      setErrors({ form: "This account is not active. Ask your admin to enable it." });
+      setErrors({ form: "This account is waiting for admin approval, or has been deactivated." });
       return;
     }
     router.replace(profile.role === "admin" ? "/admin" : "/my-day");
@@ -99,7 +100,7 @@ export default function LoginPage() {
             <span className="text-base font-semibold tracking-tight">Octaite Accountability</span>
           </div>
           <h1 className="text-[28px] font-semibold leading-tight">Sign in</h1>
-          <p className="mt-1 text-sm text-muted">Use the email and password your admin gave you.</p>
+          <p className="mt-1 text-sm text-muted">Welcome back. Enter your email and password.</p>
 
           <form onSubmit={onSubmit} noValidate className="mt-8 flex flex-col gap-4">
             {errors.form ? (
@@ -121,7 +122,12 @@ export default function LoginPage() {
               Sign in
             </Button>
           </form>
-          <p className="mt-6 text-xs text-muted">No account? Accounts are created by your admin.</p>
+          <p className="mt-6 text-sm text-muted">
+            New to the team?{" "}
+            <Link href="/signup" className="font-semibold text-accent-ink underline-offset-4 hover:underline">
+              Create an account
+            </Link>
+          </p>
         </motion.div>
       </main>
     </div>

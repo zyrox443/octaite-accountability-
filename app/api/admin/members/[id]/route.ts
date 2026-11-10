@@ -21,6 +21,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         return NextResponse.json({ error: "You cannot deactivate your own account." }, { status: 400 });
       }
       profilePatch.is_active = body.is_active;
+      profilePatch.pending_approval = false;
     }
 
     const authPatch: { password?: string; ban_duration?: string } = {};

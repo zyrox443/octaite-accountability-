@@ -9,6 +9,8 @@ export interface Profile {
   title: string;
   role: Role;
   is_active: boolean;
+  avatar_url: string | null;
+  pending_approval: boolean;
   created_at: string;
 }
 
@@ -51,7 +53,7 @@ export interface TaskProof {
 export interface Notification {
   id: string;
   recipient_id: string;
-  type: "task_overdue" | "task_submitted" | "task_approved" | "task_rejected" | "no_plan";
+  type: "task_overdue" | "task_submitted" | "task_approved" | "task_rejected" | "no_plan" | "reminder" | "signup_request";
   task_id: string | null;
   subject_user_id: string | null;
   title: string;
@@ -72,6 +74,7 @@ export interface LeaderRow {
   user_id: string;
   full_name: string;
   title: string;
+  avatar_url: string | null;
   hours: number;
   tasks_completed: number;
   on_time_count: number;
@@ -87,4 +90,16 @@ export function displayStatus(t: Pick<Task, "status" | "rejection_reason">): Dis
 
 export function normalizeTask(t: Task): Task {
   return { ...t, estimated_hours: Number(t.estimated_hours) };
+}
+
+/** Job roles are stored as one comma-separated string, e.g. "Video Editor, AI Engineer". */
+export const ROLE_PRESETS = ["Video Editor", "YouTube Video Maker", "GoHighLevel Expert", "AI Engineer"];
+export function splitRoles(title: string | null | undefined): string[] {
+  return (title ?? "")
+    .split(",")
+    .map((r) => r.trim())
+    .filter(Boolean);
+}
+export function joinRoles(roles: string[]): string {
+  return Array.from(new Set(roles.map((r) => r.trim()).filter(Boolean))).join(", ");
 }

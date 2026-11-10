@@ -182,7 +182,21 @@ function ApprovedCheck() {
   );
 }
 
-export function Avatar({ name, size = 36, accent }: { name: string; size?: number; accent?: boolean }) {
+export function Avatar({ name, size = 36, accent, src }: { name: string; size?: number; accent?: boolean; src?: string | null }) {
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        width={size}
+        height={size}
+        className={cx("flex-none rounded-full border object-cover", accent ? "border-accent ring-2 ring-accent/40" : "border-line")}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <span
       aria-hidden
@@ -194,6 +208,60 @@ export function Avatar({ name, size = 36, accent }: { name: string; size?: numbe
     >
       {initials(name)}
     </span>
+  );
+}
+
+/* Pick one or more job roles: preset chips plus a free-text add. */
+export function RolesInput({ value, onChange, presets }: { value: string[]; onChange: (v: string[]) => void; presets: string[] }) {
+  const [custom, setCustom] = useState("");
+  const options = Array.from(new Set([...presets, ...value]));
+  const toggle = (r: string) => onChange(value.includes(r) ? value.filter((x) => x !== r) : [...value, r]);
+  const add = () => {
+    const r = custom.trim().replace(/,/g, " ");
+    if (r && !value.some((x) => x.toLowerCase() === r.toLowerCase())) onChange([...value, r]);
+    setCustom("");
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {options.map((r) => {
+          const on = value.includes(r);
+          return (
+            <button
+              key={r}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(r)}
+              className={cx(
+                "inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-[background-color,border-color,transform] duration-200 active:scale-95",
+                on ? "btn-primary" : "border-line-strong bg-surface text-muted hover:border-accent hover:text-ink",
+              )}
+            >
+              {on ? <Check size={14} /> : null}
+              {r}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex gap-2">
+        <input
+          className={inputClass}
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          placeholder="Add another role"
+          aria-label="Add another role"
+        />
+        <Button type="button" onClick={add} disabled={!custom.trim()}>
+          Add
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -471,7 +539,7 @@ export function Modal({
                 <X size={18} />
               </IconButton>
             </div>
-            <div className="overflow-y-auto p-5">{children}</div>
+            <div className="overflow-y-auto overflow-x-hidden p-5">{children}</div>
             {footer ? <div className="flex flex-wrap justify-end gap-2 border-t border-line p-4">{footer}</div> : null}
           </motion.div>
         </motion.div>

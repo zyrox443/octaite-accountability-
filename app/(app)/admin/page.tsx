@@ -1,14 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlarmClock, ArrowRight, CalendarX, CircleCheck, CircleCheckBig, Hourglass, Inbox, Plus } from "lucide-react";
+import { AlarmClock, ArrowRight, BellRing, CalendarX, CircleCheck, CircleCheckBig, Hourglass, Inbox, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth, useTableChanges, useTick } from "@/components/providers";
 import { TaskCard, overdueText } from "@/components/task-card";
 import { TaskDrawer } from "@/components/task-drawer";
 import { TaskFormModal } from "@/components/task-form";
-import { Avatar, Button, CountUp, ErrorState, ProgressRing, SectionTitle, Skeleton, StatCard, cx, stagger, staggerItem } from "@/components/ui";
+import { Avatar, Button, CountUp, ErrorState, ProgressRing, SectionTitle, Skeleton, StatCard, cx, stagger, staggerItem, useToast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { fmtDateTime, fmtHours, fmtLongDay, pkDate, pkHM } from "@/lib/time";
 import { normalizeTask, type Profile, type Settings, type Task } from "@/lib/types";
@@ -27,7 +27,20 @@ export default function AdminDashboard() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [adding, setAdding] = useState(false);
+  const [reminded, setReminded] = useState<Record<string, boolean>>({});
+  const toast = useToast();
   useTick();
+
+  // Sends a bell notification to the member. With a task it is about that
+  // overdue task; without one it asks them to plan their day.
+  async function remind(userIds: string[], taskId?: string) {
+    const sb = supabaseBrowser();
+    const results = await Promise.all(userIds.map((u) => sb.rpc("send_reminder", { p_user_id: u, p_task_id: taskId ?? null })));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) return toast({ title: "Could not send reminder", body: failed.error.message, tone: "error" });
+    setReminded((r) => ({ ...r, ...Object.fromEntries(userIds.map((u) => [taskId ?? u, true])) }));
+    toast({ title: userIds.length > 1 ? `Reminder sent to ${userIds.length} members` : "Reminder sent", tone: "success" });
+  }
 
   const load = useCallback(async () => {
     const sb = supabaseBrowser();
@@ -154,21 +167,24 @@ export default function AdminDashboard() {
             ) : (
               <motion.ul variants={stagger} initial="hidden" animate="show">
                 {overdue.map((t) => (
-                  <motion.li key={t.id} variants={staggerItem} className="border-b border-line last:border-b-0">
-                    <button onClick={() => setOpenId(t.id)} className="flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-surface-2 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+                  <motion.li key={t.id} variants={staggerItem} className="flex flex-col border-b border-line last:border-b-0 sm:flex-row sm:items-center">
+                    <button onClick={() => setOpenId(t.id)} className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-3 text-left hover:bg-surface-2 sm:flex-row sm:items-center sm:gap-4 sm:pl-5">
                       <span className="flex min-w-0 items-center gap-2.5 sm:w-52 sm:flex-none">
-                        <Avatar name={byId[t.user_id]?.full_name ?? "?"} size={28} />
+                        <Avatar name={byId[t.user_id]?.full_name ?? "?"} size={32} src={byId[t.user_id]?.avatar_url} />
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-medium">{byId[t.user_id]?.full_name ?? "Unknown"}</span>
                           <span className="block truncate text-xs text-muted">{byId[t.user_id]?.title}</span>
                         </span>
                       </span>
                       <span className="min-w-0 flex-1 break-words text-sm">{t.title}</span>
-                      <span className="flex-none text-[13px] text-muted tnum sm:w-40 sm:text-right">Due {fmtDateTime(t.due_at)}</span>
-                      <span className="flex-none text-[13px] font-semibold text-danger tnum sm:w-36 sm:text-right">
-                        {overdueText(t)}
-                      </span>
+                      <span className="flex-none text-[13px] text-muted tnum sm:text-right">Due {fmtDateTime(t.due_at)}</span>
+                      <span className="flex-none text-[13px] font-semibold text-danger tnum sm:w-36 sm:text-right">{overdueText(t)}</span>
                     </button>
+                    <div className="px-4 pb-3 sm:py-0 sm:pl-0 sm:pr-4">
+                      <Button size="sm" className="min-h-11 w-full sm:min-h-9 sm:w-auto" disabled={reminded[t.id]} onClick={() => remind([t.user_id], t.id)}>
+                        <BellRing size={14} /> {reminded[t.id] ? "Reminded" : "Remind"}
+                      </Button>
+                    </div>
                   </motion.li>
                 ))}
               </motion.ul>
@@ -190,16 +206,28 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               </div>
-              <ul className="flex flex-wrap gap-2">
+              <ul className="flex flex-1 flex-wrap gap-2">
                 {noPlan.map((m) => (
-                  <li key={m.id}>
-                    <Link href={`/admin/team/${m.id}`} className="lift flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1.5 pr-3.5">
-                      <Avatar name={m.full_name} size={24} />
+                  <li key={m.id} className="flex items-center gap-1 rounded-full border border-line bg-surface py-1 pl-1.5 pr-1">
+                    <Link href={`/admin/team/${m.id}`} className="flex min-h-9 items-center gap-2 pr-1">
+                      <Avatar name={m.full_name} size={26} src={m.avatar_url} />
                       <span className="text-[13px] font-medium">{m.full_name}</span>
                     </Link>
+                    <button
+                      onClick={() => remind([m.id])}
+                      disabled={reminded[m.id]}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent-tint px-3 text-[13px] font-semibold text-accent-ink transition-transform active:scale-95 disabled:opacity-60"
+                    >
+                      <BellRing size={13} /> {reminded[m.id] ? "Reminded" : "Remind"}
+                    </button>
                   </li>
                 ))}
               </ul>
+              {noPlan.length > 1 ? (
+                <Button size="sm" className="min-h-11 sm:min-h-9" disabled={noPlan.every((m) => reminded[m.id])} onClick={() => remind(noPlan.filter((m) => !reminded[m.id]).map((m) => m.id))}>
+                  <BellRing size={14} /> Remind all
+                </Button>
+              ) : null}
             </section>
           ) : null}
 
@@ -226,7 +254,7 @@ export default function AdminDashboard() {
                     <motion.div key={m.id} variants={staggerItem}>
                       <Link href={`/admin/team/${m.id}`} className="card lift block p-5">
                         <div className="flex items-center gap-3">
-                          <Avatar name={m.full_name} />
+                          <Avatar name={m.full_name} src={m.avatar_url} />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold">{m.full_name}</p>
                             <p className="truncate text-xs text-muted">{m.title}</p>

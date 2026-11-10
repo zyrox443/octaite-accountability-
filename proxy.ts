@@ -28,16 +28,22 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isLogin = path === "/login";
+  const isPublic = isLogin || path === "/signup";
 
-  if (!user && !isLogin) {
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
     return NextResponse.redirect(url);
   }
-  if (user && (isLogin || path === "/")) {
+  if (user && (isPublic || path === "/" || path === "/my-day")) {
+    // The admin's home is the dashboard; members land on My Day.
+    const { data: profile } = await supabase.from("profiles").select("role,is_active").eq("id", user.id).maybeSingle();
+    if (profile && !profile.is_active && isPublic) return response;
+    const home = profile?.role === "admin" ? "/admin" : "/my-day";
+    if (path === home) return response;
     const url = request.nextUrl.clone();
-    url.pathname = "/my-day";
+    url.pathname = home;
     url.search = "";
     return NextResponse.redirect(url);
   }

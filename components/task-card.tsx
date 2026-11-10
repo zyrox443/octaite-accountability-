@@ -24,7 +24,7 @@ export function TaskCard({
   actionLabel,
 }: {
   task: Task;
-  owner?: { full_name: string; title?: string };
+  owner?: { full_name: string; title?: string; avatar_url?: string | null };
   onOpen: () => void;
   actionLabel?: string;
 }) {
@@ -40,7 +40,7 @@ export function TaskCard({
         <div className="min-w-0 flex-1">
           {owner ? (
             <div className="mb-1.5 flex items-center gap-2">
-              <Avatar name={owner.full_name} size={20} />
+              <Avatar name={owner.full_name} size={22} src={owner.avatar_url} />
               <span className="truncate text-[13px] font-medium">{owner.full_name}</span>
             </div>
           ) : null}
