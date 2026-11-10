@@ -57,43 +57,45 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
-      <aside className="hidden flex-col justify-between border-r border-line bg-surface p-12 lg:flex">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center bg-accent text-sm font-bold text-on-accent">O</span>
+      <aside className="relative m-3 hidden flex-col justify-between overflow-hidden rounded-[32px] bg-[#1c1917] p-12 text-[#fafaf9] lg:flex">
+        <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[#f59e0b]/30 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-32 right-0 h-96 w-96 rounded-full bg-[#d97706]/25 blur-3xl" />
+        <div className="relative flex items-center gap-2.5">
+          <span className="btn-primary flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold">O</span>
           <span className="text-base font-semibold tracking-tight">Octaite Accountability</span>
         </div>
-        <div>
-          <h2 className="max-w-md text-[34px] font-semibold leading-[1.15] tracking-tight">
+        <div className="relative">
+          <h2 className="max-w-md text-[40px] font-bold leading-[1.1] tracking-tight">
             Plan the day. Prove the work. See who delivered.
           </h2>
-          <ul className="mt-10 flex flex-col gap-5">
+          <ul className="mt-10 flex max-w-md flex-col gap-4">
             {[
               { icon: <ClipboardCheck size={18} />, t: "Daily plans", d: "Every task has an owner, an estimate and a due time." },
               { icon: <ShieldCheck size={18} />, t: "Proof before approval", d: "Files or links are required to complete a task." },
               { icon: <Trophy size={18} />, t: "Leaderboard", d: "Approved hours ranked by week, month and all time." },
             ].map((f) => (
-              <li key={f.t} className="flex items-start gap-4">
-                <span className="flex h-9 w-9 flex-none items-center justify-center border border-line bg-accent-tint text-accent-ink">{f.icon}</span>
+              <li key={f.t} className={`flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur ${f.t === "Proof before approval" ? "float-slower ml-8" : "float-slow"}`}>
+                <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[#f59e0b] text-[#111111]">{f.icon}</span>
                 <span>
                   <span className="block text-sm font-semibold">{f.t}</span>
-                  <span className="block text-sm text-muted">{f.d}</span>
+                  <span className="block text-sm text-[#d6d3d1]">{f.d}</span>
                 </span>
               </li>
             ))}
           </ul>
         </div>
-        <p className="text-xs text-muted">All times shown in Pakistan Standard Time.</p>
+        <p className="relative text-xs text-[#a8a29e]">All times shown in Pakistan Standard Time.</p>
       </aside>
 
       <main className="flex items-center justify-center px-4 py-12">
         <motion.div
-          className="w-full max-w-[400px]"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="card w-full max-w-[420px] p-6 sm:p-8"
+          initial={{ opacity: 0, y: 20, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 280, damping: 26 }}
         >
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <span className="flex h-8 w-8 items-center justify-center bg-accent text-sm font-bold text-on-accent">O</span>
+            <span className="btn-primary flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold">O</span>
             <span className="text-base font-semibold tracking-tight">Octaite Accountability</span>
           </div>
           <h1 className="text-[28px] font-semibold leading-tight">Sign in</h1>
@@ -101,7 +103,7 @@ export default function LoginPage() {
 
           <form onSubmit={onSubmit} noValidate className="mt-8 flex flex-col gap-4">
             {errors.form ? (
-              <p role="alert" className="border border-danger-line bg-danger-tint px-3 py-2.5 text-[13px] text-danger">
+              <p role="alert" className="rounded-xl border border-danger-line bg-danger-tint px-3 py-2.5 text-[13px] text-danger">
                 {errors.form}
               </p>
             ) : null}

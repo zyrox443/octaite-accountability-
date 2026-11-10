@@ -65,7 +65,7 @@ export default function TeamPage() {
           }
         />
       ) : (
-        <div className="border-line md:border md:bg-surface">
+        <div className="md:overflow-hidden md:rounded-3xl md:border md:border-line md:bg-surface md:shadow-[var(--shadow-sm)]">
           <div className="hidden grid-cols-[1.4fr_1fr_1.4fr_110px_170px] gap-4 border-b border-line px-5 py-2.5 text-xs font-medium text-muted md:grid">
             <span>Member</span>
             <span>Role</span>
@@ -78,7 +78,7 @@ export default function TeamPage() {
               <motion.li
                 key={p.id}
                 variants={staggerItem}
-                className="border border-line bg-surface p-4 md:grid md:grid-cols-[1.4fr_1fr_1.4fr_110px_170px] md:items-center md:gap-4 md:border-0 md:border-b md:px-5 md:py-3 md:last:border-b-0"
+                className="card p-4 md:rounded-none md:shadow-none md:bg-transparent md:grid md:grid-cols-[1.4fr_1fr_1.4fr_110px_170px] md:items-center md:gap-4 md:border-0 md:border-b md:px-5 md:py-3 md:last:border-b-0"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={p.full_name} accent={p.role === "admin"} />
@@ -91,7 +91,7 @@ export default function TeamPage() {
                 <p className="mt-2 truncate text-[13px] text-muted md:mt-0 md:text-sm">{p.email}</p>
                 <div className="mt-3 md:mt-0">
                   <span
-                    className="inline-flex h-[22px] items-center px-2 text-[11px] font-semibold uppercase tracking-[0.06em]"
+                    className="inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
                     style={
                       p.role === "admin"
                         ? { color: "var(--accent-ink)", background: "var(--accent-tint)" }
@@ -107,7 +107,7 @@ export default function TeamPage() {
                   {p.role === "member" ? (
                     <Link
                       href={`/admin/team/${p.id}`}
-                      className="inline-flex min-h-11 flex-1 items-center justify-center border border-line-strong px-3 text-[13px] font-medium transition-colors hover:border-accent md:min-h-9 md:flex-none"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-line-strong px-3 text-[13px] font-medium transition-colors hover:border-accent md:min-h-9 md:flex-none"
                     >
                       View work
                     </Link>
@@ -230,7 +230,7 @@ function MemberModal({
         }}
       >
         {errors.form ? (
-          <p role="alert" className="border border-danger-line bg-danger-tint px-3 py-2.5 text-[13px] text-danger">
+          <p role="alert" className="rounded-xl border border-danger-line bg-danger-tint px-3 py-2.5 text-[13px] text-danger">
             {errors.form}
           </p>
         ) : null}
@@ -258,7 +258,7 @@ function MemberModal({
           )}
         </Field>
         {editing && member && !member.is_active ? (
-          <p className="border-l-2 border-line-strong bg-surface-2 px-3 py-2 text-[13px] text-muted">This account is inactive and cannot sign in.</p>
+          <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13px] text-muted">This account is inactive and cannot sign in.</p>
         ) : null}
         <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
       </form>

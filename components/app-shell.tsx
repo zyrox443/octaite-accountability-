@@ -58,9 +58,9 @@ function Shell({ children }: { children: ReactNode }) {
         ) : (
           <motion.div
             key={path}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 16, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
             {children}
           </motion.div>
@@ -106,10 +106,10 @@ function TopNav() {
   }, [menuOpen]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-surface">
-      <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-2 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 px-3 pt-3 sm:px-6 lg:px-8">
+      <div className="floating mx-auto flex h-[60px] max-w-[1280px] items-center gap-2 rounded-full pl-3 pr-2">
         <Link href={profile?.role === "admin" ? "/admin" : "/my-day"} className="flex min-h-11 items-center gap-2.5 pr-2" aria-label="Octaite Accountability home">
-          <span className="flex h-7 w-7 items-center justify-center bg-accent text-[13px] font-bold text-on-accent">O</span>
+          <span className="btn-primary flex h-8 w-8 items-center justify-center rounded-[10px] text-[13px] font-bold">O</span>
           <span className="text-[15px] font-semibold tracking-tight">Octaite Accountability</span>
         </Link>
 
@@ -122,18 +122,18 @@ function TopNav() {
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={cx(
-                  "relative flex items-center px-3.5 text-sm font-medium transition-colors lg:px-4",
-                  active ? "text-ink" : "text-muted hover:text-ink",
+                  "relative my-2.5 flex items-center rounded-full px-4 text-sm font-medium transition-colors",
+                  active ? "text-accent-ink" : "text-muted hover:text-ink",
                 )}
               >
-                {l.label}
                 {active ? (
                   <motion.span
-                    layoutId="nav-underline"
-                    className="absolute inset-x-3 -bottom-px h-0.5 bg-accent"
-                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                    layoutId="nav-pill"
+                    className="absolute inset-0 rounded-full bg-accent-tint ring-1 ring-inset ring-accent/25"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   />
                 ) : null}
+                <span className="relative">{l.label}</span>
               </Link>
             );
           })}
@@ -152,7 +152,7 @@ function TopNav() {
       <AnimatePresence>
         {menuOpen ? (
           <motion.div
-            className="fixed inset-0 z-50 bg-backdrop lg:hidden"
+            className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[3px] lg:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -163,11 +163,11 @@ function TopNav() {
               role="dialog"
               aria-modal="true"
               aria-label="Menu"
-              className="absolute inset-y-0 right-0 flex w-[min(320px,86vw)] flex-col border-l border-line bg-surface"
-              initial={{ x: "100%" }}
+              className="absolute inset-y-2 right-2 flex w-[min(320px,86vw)] flex-col overflow-hidden rounded-[28px] border border-line bg-surface shadow-[var(--shadow-lg)]"
+              initial={{ x: "110%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ x: "110%" }}
+              transition={{ type: "spring", stiffness: 340, damping: 34 }}
             >
               <div className="flex h-14 items-center justify-between border-b border-line pl-5 pr-2">
                 <span className="text-sm font-semibold">Menu</span>
@@ -184,8 +184,8 @@ function TopNav() {
                       href={l.href}
                       aria-current={active ? "page" : undefined}
                       className={cx(
-                        "flex min-h-12 items-center border-l-2 px-5 text-[15px] font-medium",
-                        active ? "border-accent bg-accent-tint text-ink" : "border-transparent text-muted",
+                        "mx-2 flex min-h-12 items-center rounded-2xl px-4 text-[15px] font-medium",
+                        active ? "bg-accent-tint text-accent-ink" : "text-muted",
                       )}
                     >
                       {l.label}
@@ -204,7 +204,7 @@ function TopNav() {
                   </div>
                   <button
                     onClick={signOut}
-                    className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong text-sm font-medium"
+                    className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line-strong text-sm font-medium"
                   >
                     <LogOut size={16} /> Sign out
                   </button>
@@ -274,11 +274,12 @@ function UserMenu({ className }: { className?: string }) {
       <AnimatePresence>
         {open ? (
           <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 top-[calc(100%+6px)] w-60 border border-line bg-surface"
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 460, damping: 32 }}
+            style={{ transformOrigin: "top right" }}
+            className="floating absolute right-0 top-[calc(100%+10px)] w-64 overflow-hidden rounded-2xl"
           >
             <div className="border-b border-line p-3">
               <p className="truncate text-sm font-medium">{profile.full_name}</p>
@@ -334,7 +335,7 @@ function NotificationBell() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center bg-[#dc2626] px-1 text-[11px] font-semibold leading-none text-white tnum"
+              className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#dc2626] ring-2 ring-surface px-1 text-[11px] font-semibold leading-none text-white tnum"
             >
               {unread > 99 ? "99+" : unread}
             </motion.span>
@@ -344,11 +345,12 @@ function NotificationBell() {
       <AnimatePresence>
         {open ? (
           <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-x-3 top-[60px] z-50 flex max-h-[70dvh] flex-col border border-line bg-surface sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+6px)] sm:w-[380px]"
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 460, damping: 32 }}
+            style={{ transformOrigin: "top right" }}
+            className="fixed inset-x-3 top-[76px] z-50 flex max-h-[70dvh] flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--shadow-lg)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[380px]"
           >
             <div className="flex items-center justify-between border-b border-line py-1 pl-4 pr-1">
               <span className="text-sm font-semibold">Notifications</span>
@@ -378,7 +380,7 @@ function NotificationBell() {
                     )}
                   >
                     <span
-                      className="mt-1.5 h-2 w-2 flex-none"
+                      className="mt-1.5 h-2 w-2 flex-none rounded-full"
                       style={{
                         background: n.read_at
                           ? "transparent"

@@ -165,7 +165,7 @@ Submitted -> Rejected -> back to Pending (or Overdue if the due time has passed)
 
 ## Design notes
 - Light and dark mode with a toggle in the top bar. The choice is remembered on each device and follows the system setting on first visit.
-- Square corners everywhere, amber accent, 1px borders.
+- Rounded cards and pills, soft shadows, amber gradient highlights and spring-based motion.
 - Small amber text uses `#B45309` in light mode. The brand amber `#D97706` is used for fills, borders and large figures, because on a white background it does not reach the WCAG AA contrast ratio for small text.
 
 ## Troubleshooting

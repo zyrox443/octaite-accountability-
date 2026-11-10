@@ -135,7 +135,7 @@ export default function EmployeeDetailPage() {
               }}
               aria-pressed={active}
               className={cx(
-                "min-h-11 border px-3 text-[13px] font-medium transition-colors sm:min-h-9",
+                "min-h-11 rounded-full border px-4 text-[13px] font-medium transition-colors sm:min-h-9",
                 active ? "border-accent bg-accent-tint text-ink" : "border-line-strong bg-surface text-muted hover:border-accent hover:text-ink",
               )}
             >
@@ -179,7 +179,7 @@ export default function EmployeeDetailPage() {
             ) : (
               <>
                 {/* Desktop: table */}
-                <div className="hidden border border-line bg-surface md:block">
+                <div className="card hidden overflow-hidden md:block">
                   <table className="w-full table-fixed text-left text-sm">
                     <thead>
                       <tr className="border-b border-line text-xs font-medium text-muted">

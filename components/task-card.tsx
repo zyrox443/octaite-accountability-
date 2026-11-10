@@ -33,10 +33,10 @@ export function TaskCard({
   return (
     <button
       onClick={onOpen}
-      className="lift group flex w-full items-stretch border border-line bg-surface text-left"
-      style={{ borderLeftWidth: 3, borderLeftColor: statusBar(ds) }}
+      className="card lift group relative flex w-full items-stretch overflow-hidden text-left"
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 sm:flex-row sm:items-center sm:gap-4">
+      <span aria-hidden className="absolute bottom-3.5 left-2 top-3.5 w-1 rounded-full" style={{ background: statusBar(ds) }} />
+      <div className="flex min-w-0 flex-1 flex-col gap-2 py-4 pl-6 pr-4 sm:flex-row sm:items-center sm:gap-4 sm:pr-5">
         <div className="min-w-0 flex-1">
           {owner ? (
             <div className="mb-1.5 flex items-center gap-2">

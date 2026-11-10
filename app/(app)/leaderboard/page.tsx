@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Trophy } from "lucide-react";
+import { Crown, Trophy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTableChanges } from "@/components/providers";
 import { Avatar, CountUp, EmptyState, ErrorState, PageHeader, Skeleton, cx } from "@/components/ui";
@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
     <div>
       <PageHeader title="Leaderboard" subtitle="Ranked by hours of approved work. Week runs Monday to Sunday." />
 
-      <div className="mb-8 flex border-b border-line" role="tablist" aria-label="Period">
+      <div className="mb-10 inline-flex rounded-full border border-line bg-surface p-1 shadow-[var(--shadow-sm)]" role="tablist" aria-label="Period">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -58,14 +58,14 @@ export default function LeaderboardPage() {
             aria-selected={period === t.id}
             onClick={() => setPeriod(t.id)}
             className={cx(
-              "relative min-h-11 px-4 text-sm font-medium transition-colors",
-              period === t.id ? "text-ink" : "text-muted hover:text-ink",
+              "relative min-h-11 rounded-full px-4 text-sm font-semibold transition-colors sm:px-5",
+              period === t.id ? "text-[#111111]" : "text-muted hover:text-ink",
             )}
           >
-            {t.label}
             {period === t.id ? (
-              <motion.span layoutId="lb-tab" className="absolute inset-x-0 -bottom-px h-0.5 bg-accent" transition={{ type: "spring", stiffness: 500, damping: 40 }} />
+              <motion.span layoutId="lb-tab" className="btn-primary absolute inset-0 rounded-full" transition={{ type: "spring", stiffness: 420, damping: 34 }} />
             ) : null}
+            <span className="relative">{t.label}</span>
           </button>
         ))}
       </div>
@@ -85,7 +85,7 @@ export default function LeaderboardPage() {
           {rest.length > 0 ? (
             <motion.ol
               key={`rest-${replay}`}
-              className="mt-10 border border-line bg-surface"
+              className="card mt-10 overflow-hidden"
               initial="hidden"
               animate="show"
               variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.9 } } }}
@@ -108,9 +108,9 @@ export default function LeaderboardPage() {
                     <p className="truncate text-xs text-muted tnum">
                       {r.title} · {r.tasks_completed} {r.tasks_completed === 1 ? "task" : "tasks"} · {onTimePct(r)}% on time
                     </p>
-                    <div className="mt-2 h-1 bg-surface-2">
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
                       <motion.div
-                        className="h-full bg-accent"
+                        className="h-full rounded-full bg-accent"
                         initial={{ width: 0 }}
                         animate={{ width: `${leader ? (r.hours / leader) * 100 : 0}%` }}
                         transition={{ duration: 0.7, delay: 1, ease: [0.16, 1, 0.3, 1] }}
@@ -136,7 +136,7 @@ function Podium({ rows, leader }: { rows: LeaderRow[]; leader: number }) {
     { row: rows[2], rank: 3, delay: 0 },
   ];
   return (
-    <div className="mx-auto grid max-w-[760px] grid-cols-3 items-end gap-2 border-b border-line-strong sm:gap-4">
+    <div className="mx-auto grid max-w-[760px] grid-cols-3 items-end gap-2 sm:gap-4">
       {slots.map(({ row, rank, delay }) => {
         if (!row) return <div key={rank} />;
         const height = leader > 0 ? Math.max(MIN_STEP, Math.round((row.hours / leader) * MAX_STEP)) : MIN_STEP;
@@ -149,7 +149,17 @@ function Podium({ rows, leader }: { rows: LeaderRow[]; leader: number }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: delay + 0.35 }}
             >
-              <Avatar name={row.full_name} size={first ? 48 : 40} accent={first} />
+              {first ? (
+                <motion.span
+                  initial={{ opacity: 0, y: 10, rotate: -20, scale: 0.6 }}
+                  animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 14, delay: 1.5 }}
+                  className="mb-1 text-accent"
+                >
+                  <Crown size={24} fill="currentColor" />
+                </motion.span>
+              ) : null}
+              <Avatar name={row.full_name} size={first ? 56 : 44} accent={first} />
               <p
                 className={cx(
                   "mt-2 w-full truncate text-[13px] font-semibold sm:text-[15px]",
@@ -169,18 +179,18 @@ function Podium({ rows, leader }: { rows: LeaderRow[]; leader: number }) {
             </motion.div>
             <motion.div
               className={cx(
-                "flex w-full items-start justify-center overflow-hidden border border-b-0",
-                first ? "border-accent bg-accent" : "border-line-strong bg-surface-2",
+                "flex w-full items-start justify-center overflow-hidden rounded-t-[26px]",
+                first ? "card-accent" : "border border-b-0 border-line bg-gradient-to-b from-surface to-surface-2 shadow-[var(--shadow-sm)]",
               )}
               initial={reduce ? { height, opacity: 0 } : { height: 0, opacity: 1 }}
               animate={{ height, opacity: 1 }}
-              transition={{ duration: reduce ? 0.3 : 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
+              transition={reduce ? { duration: 0.3, delay } : { type: "spring", stiffness: 120, damping: 14, delay }}
               style={first && !reduce ? { animation: "podium-glow 1.4s ease-out 1.5s forwards" } : undefined}
             >
               <span
                 className={cx(
-                  "pt-2 text-[44px] font-bold leading-none tracking-tight tnum sm:text-[56px]",
-                  first ? "text-on-accent" : "text-accent-ink",
+                  "relative z-[1] pt-3 text-[44px] font-extrabold leading-none tracking-tight tnum sm:text-[60px]",
+                  first ? "text-[#111111]" : "text-accent-ink",
                 )}
               >
                 {rank}
@@ -197,9 +207,9 @@ function PodiumSkeleton() {
   return (
     <div>
       <div className="mx-auto grid max-w-[760px] grid-cols-3 items-end gap-2 sm:gap-4">
-        <Skeleton className="h-[150px]" />
-        <Skeleton className="h-[240px]" />
-        <Skeleton className="h-[110px]" />
+        <Skeleton className="h-[150px] rounded-b-none" />
+        <Skeleton className="h-[240px] rounded-b-none" />
+        <Skeleton className="h-[110px] rounded-b-none" />
       </div>
       <Skeleton className="mt-10 h-[76px]" />
     </div>

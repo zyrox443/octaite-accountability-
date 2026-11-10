@@ -1,14 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, CalendarX, CircleCheck, Plus } from "lucide-react";
+import { AlarmClock, ArrowRight, CalendarX, CircleCheck, CircleCheckBig, Hourglass, Inbox, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth, useTableChanges, useTick } from "@/components/providers";
 import { TaskCard, overdueText } from "@/components/task-card";
 import { TaskDrawer } from "@/components/task-drawer";
 import { TaskFormModal } from "@/components/task-form";
-import { Avatar, Button, ErrorState, PageHeader, SectionTitle, Skeleton, StatCard, cx, stagger, staggerItem } from "@/components/ui";
+import { Avatar, Button, CountUp, ErrorState, ProgressRing, SectionTitle, Skeleton, StatCard, cx, stagger, staggerItem } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { fmtDateTime, fmtHours, fmtLongDay, pkDate, pkHM } from "@/lib/time";
 import { normalizeTask, type Profile, type Settings, type Task } from "@/lib/types";
@@ -64,20 +64,55 @@ export default function AdminDashboard() {
   const pastCutoff = settings ? pkHM() >= settings.no_plan_cutoff.slice(0, 5) && settings.work_days.includes(isoDow) : false;
   const noPlan = members.filter((m) => !todays.some((t) => t.user_id === m.id));
   const openTask = list.find((t) => t.id === openId) ?? null;
+  const doneToday = todays.filter((t) => t.status === "approved" || t.status === "submitted").length;
 
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
     <div>
-      <PageHeader
-        title="Dashboard"
-        subtitle={fmtLongDay()}
-        actions={
-          <Button onClick={() => setAdding(true)}>
-            <Plus size={16} /> Assign task
-          </Button>
-        }
-      />
+      <motion.section
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        className="card relative mb-5 overflow-hidden p-5 sm:mb-6 sm:p-7"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-28 right-40 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="inline-flex items-center rounded-full bg-accent-tint px-3 py-1 text-xs font-semibold text-accent-ink tnum">{fmtLongDay()}</p>
+            <h1 className="mt-3 text-[28px] font-bold leading-tight sm:text-[34px]">Team dashboard</h1>
+            <p className="mt-1 text-sm text-muted">
+              {tasks === null
+                ? "Loading today's activity"
+                : overdue.length
+                  ? `${overdue.length} overdue and ${awaiting.length} waiting for your approval.`
+                  : awaiting.length
+                    ? `Nothing overdue. ${awaiting.length} waiting for your approval.`
+                    : "Nothing overdue and the approval queue is clear."}
+            </p>
+            <Button variant="primary" className="mt-5" onClick={() => setAdding(true)}>
+              <Plus size={16} /> Assign task
+            </Button>
+          </div>
+          <div className="flex items-center gap-4 self-start sm:self-auto">
+            <ProgressRing value={todays.length ? doneToday / todays.length : 0} size={124} stroke={11}>
+              <span className="text-[26px] font-bold leading-none">
+                <CountUp value={todays.length ? Math.round((doneToday / todays.length) * 100) : 0} suffix="%" />
+              </span>
+              <span className="mt-1 text-[11px] font-medium text-muted">team done</span>
+            </ProgressRing>
+            <div className="text-sm">
+              <p className="font-semibold tnum">
+                {doneToday} / {todays.length} tasks
+              </p>
+              <p className="text-muted tnum">
+                {members.length - noPlan.length} of {members.length} planned
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.section>
 
       {tasks === null ? (
         <DashboardSkeleton />
@@ -85,30 +120,31 @@ export default function AdminDashboard() {
         <>
           <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <motion.div variants={staggerItem}>
-              <StatCard primary tone="danger" label="Overdue now" value={overdue.length} context={overdue.length ? (new Set(overdue.map((t) => t.user_id)).size === 1 ? "From 1 person" : `Across ${new Set(overdue.map((t) => t.user_id)).size} people`) : "Everything is on track"} />
+              <StatCard primary icon={<AlarmClock size={18} />} tone="danger" label="Overdue now" value={overdue.length} context={overdue.length ? (new Set(overdue.map((t) => t.user_id)).size === 1 ? "From 1 person" : `Across ${new Set(overdue.map((t) => t.user_id)).size} people`) : "Everything is on track"} />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <StatCard label="Awaiting approval" value={awaiting.length} context={awaiting.length ? "Proof ready to review" : "Queue is clear"} />
+              <StatCard icon={<Inbox size={18} />} label="Awaiting approval" value={awaiting.length} context={awaiting.length ? "Proof ready to review" : "Queue is clear"} />
             </motion.div>
             <motion.div variants={staggerItem}>
               <StatCard
+                icon={<CircleCheckBig size={18} />}
                 label="Completed today"
                 value={todays.filter((t) => t.status === "approved").length}
                 context={`of ${todays.length} planned`}
               />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <StatCard label="Hours planned today" value={todays.reduce((s, t) => s + t.estimated_hours, 0)} decimals={2} suffix="h" context={`${members.length - noPlan.length} of ${members.length} members planned`} />
+              <StatCard icon={<Hourglass size={18} />} label="Hours planned today" value={todays.reduce((s, t) => s + t.estimated_hours, 0)} decimals={2} suffix="h" context={`${members.length - noPlan.length} of ${members.length} members planned`} />
             </motion.div>
           </motion.div>
 
           {/* Overdue panel */}
-          <section className="mt-8 border border-danger-line bg-surface" aria-label="Overdue tasks">
+          <section className="mt-8 card card-danger overflow-hidden" aria-label="Overdue tasks">
             <div className="flex items-center justify-between border-b border-danger-line bg-danger-tint px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2">
                 {overdue.length ? <span className="pulse-dot" aria-hidden /> : null}
                 <h2 className="text-lg font-semibold text-danger">Overdue</h2>
-                <span className="border border-danger-line px-1.5 text-xs font-semibold text-danger tnum">{overdue.length}</span>
+                <span className="rounded-full border border-danger-line px-2 text-xs font-semibold text-danger tnum">{overdue.length}</span>
               </div>
             </div>
             {overdue.length === 0 ? (
@@ -142,7 +178,7 @@ export default function AdminDashboard() {
           {/* No plan today */}
           {noPlan.length > 0 ? (
             <section
-              className={cx("mt-4 flex flex-col gap-3 border p-4 sm:flex-row sm:items-center sm:px-5", pastCutoff ? "border-accent bg-accent-tint" : "border-line bg-surface")}
+              className={cx("mt-4 flex flex-col gap-3 rounded-3xl border p-4 sm:flex-row sm:items-center sm:px-5", pastCutoff ? "border-accent/50 bg-accent-tint" : "border-line bg-surface")}
               aria-label="No plan today"
             >
               <div className="flex items-start gap-3 sm:w-64 sm:flex-none">
@@ -157,7 +193,7 @@ export default function AdminDashboard() {
               <ul className="flex flex-wrap gap-2">
                 {noPlan.map((m) => (
                   <li key={m.id}>
-                    <Link href={`/admin/team/${m.id}`} className="lift flex min-h-11 items-center gap-2 border border-line bg-surface px-2.5">
+                    <Link href={`/admin/team/${m.id}`} className="lift flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1.5 pr-3.5">
                       <Avatar name={m.full_name} size={24} />
                       <span className="text-[13px] font-medium">{m.full_name}</span>
                     </Link>
@@ -171,7 +207,7 @@ export default function AdminDashboard() {
           <section className="mt-10">
             <SectionTitle>Today by member</SectionTitle>
             {members.length === 0 ? (
-              <p className="border border-dashed border-line-strong bg-surface px-4 py-8 text-center text-sm text-muted">
+              <p className="rounded-3xl border border-dashed border-line-strong bg-surface/60 px-4 py-8 text-center text-sm text-muted">
                 No active members yet. Add your team on the <Link href="/admin/team" className="font-medium text-accent-ink underline underline-offset-4">Team page</Link>.
               </p>
             ) : (
@@ -188,7 +224,7 @@ export default function AdminDashboard() {
                   const inReview = mine.filter((t) => t.status === "submitted").length;
                   return (
                     <motion.div key={m.id} variants={staggerItem}>
-                      <Link href={`/admin/team/${m.id}`} className="lift block border border-line bg-surface p-4">
+                      <Link href={`/admin/team/${m.id}`} className="card lift block p-5">
                         <div className="flex items-center gap-3">
                           <Avatar name={m.full_name} />
                           <div className="min-w-0 flex-1">
@@ -197,7 +233,7 @@ export default function AdminDashboard() {
                           </div>
                           <ArrowRight size={16} className="flex-none text-muted" />
                         </div>
-                        <dl className="mt-4 grid grid-cols-4 gap-px border border-line bg-line">
+                        <dl className="mt-4 grid grid-cols-4 gap-px overflow-hidden rounded-2xl border border-line bg-line">
                           {counts.map((c) => (
                             <div key={c.l} className="bg-surface px-1 py-2 text-center">
                               <dd className={cx("text-lg font-semibold leading-none tnum", c.danger && c.v > 0 && "text-danger")}>{c.v}</dd>
@@ -229,7 +265,7 @@ export default function AdminDashboard() {
               ) : null}
             </div>
             {awaiting.length === 0 ? (
-              <p className="border border-line bg-surface px-4 py-8 text-center text-sm text-muted">Nothing is waiting for your review.</p>
+              <p className="card px-4 py-8 text-center text-sm text-muted">Nothing is waiting for your review.</p>
             ) : (
               <div className="flex flex-col gap-2.5">
                 {awaiting.slice(0, 4).map((t) => (

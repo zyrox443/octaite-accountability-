@@ -25,8 +25,8 @@ export function cx(...parts: (string | false | null | undefined)[]) {
 /* ------------------------------------------------------------------ */
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-on-accent border-accent hover:bg-accent-hover hover:border-accent-hover",
-  secondary: "bg-surface text-ink border-line-strong hover:border-accent",
+  primary: "btn-primary",
+  secondary: "bg-surface text-ink border-line-strong shadow-[var(--shadow-sm)] hover:border-accent",
   ghost: "bg-transparent text-ink border-transparent hover:bg-surface-2",
   danger: "bg-surface text-danger border-danger-line hover:bg-danger-tint",
 };
@@ -45,16 +45,16 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={cx(
-        "inline-flex items-center justify-center gap-2 border font-medium whitespace-nowrap select-none",
-        "transition-[transform,background-color,border-color,opacity] duration-150",
-        "hover:-translate-y-px active:translate-y-0 active:scale-[0.98] motion-reduce:transform-none",
+        "inline-flex items-center justify-center gap-2 rounded-xl border font-semibold whitespace-nowrap select-none",
+        "transition-[transform,background-color,border-color,opacity,filter,box-shadow] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+        "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.96] motion-reduce:transform-none",
         "disabled:opacity-50 disabled:pointer-events-none",
-        size === "sm" ? "min-h-9 px-3 text-[13px]" : "min-h-11 px-4 text-sm",
+        size === "sm" ? "min-h-9 px-3.5 text-[13px]" : "min-h-11 px-5 text-sm",
         variants[variant],
         className,
       )}
     >
-      {loading ? <span className="h-2 w-2 animate-pulse bg-current" aria-hidden /> : null}
+      {loading ? <span className="h-2 w-2 animate-pulse rounded-full bg-current" aria-hidden /> : null}
       {children}
     </button>
   );
@@ -72,8 +72,8 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cx(
-        "inline-flex h-11 w-11 items-center justify-center border border-transparent text-ink",
-        "transition-colors duration-150 hover:border-line hover:bg-surface-2 active:scale-95",
+        "inline-flex h-11 w-11 items-center justify-center rounded-full border border-transparent text-ink",
+        "transition-[background-color,transform] duration-200 hover:bg-surface-2 active:scale-90",
         className,
       )}
     >
@@ -86,8 +86,8 @@ export function IconButton({
 /* Form fields                                                         */
 /* ------------------------------------------------------------------ */
 export const inputClass =
-  "w-full min-h-11 border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted " +
-  "transition-colors duration-150 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 " +
+  "w-full min-h-11 rounded-xl border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink placeholder:text-muted " +
+  "transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 " +
   "disabled:opacity-60 aria-[invalid=true]:border-danger";
 
 export function Field({
@@ -152,14 +152,14 @@ export function StatusBadge({ status, late }: { status: DisplayStatus; late?: bo
         animate={style}
         initial={false}
         transition={{ duration: 0.25 }}
-        className="inline-flex h-[22px] items-center gap-1 border px-2 text-[11px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap"
+        className="inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap"
       >
         {status === "approved" ? <ApprovedCheck /> : null}
         {statusLabel[status]}
       </motion.span>
       {late && (status === "approved" || status === "submitted") ? (
         <span
-          className="inline-flex h-[22px] items-center border px-2 text-[11px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap"
+          className="inline-flex h-6 items-center rounded-full border px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap"
           style={{ color: "var(--st-overdue-fg)", borderColor: "var(--st-overdue-fg)" }}
         >
           Late
@@ -187,8 +187,8 @@ export function Avatar({ name, size = 36, accent }: { name: string; size?: numbe
     <span
       aria-hidden
       className={cx(
-        "inline-flex flex-none items-center justify-center border font-semibold tnum",
-        accent ? "border-accent bg-accent text-on-accent" : "border-line-strong bg-surface-2 text-ink",
+        "inline-flex flex-none items-center justify-center rounded-full border font-semibold tnum",
+        accent ? "btn-primary" : "border-line bg-surface-2 text-ink",
       )}
       style={{ width: size, height: size, fontSize: Math.max(11, Math.round(size * 0.36)) }}
     >
@@ -259,6 +259,7 @@ export function StatCard({
   context,
   primary,
   tone,
+  icon,
 }: {
   label: string;
   value: number;
@@ -267,14 +268,68 @@ export function StatCard({
   context?: ReactNode;
   primary?: boolean;
   tone?: "danger";
+  icon?: ReactNode;
 }) {
+  const danger = tone === "danger" && value > 0;
   return (
-    <div className={cx("lift relative border border-line bg-surface p-5", primary && "border-t-2 border-t-accent")}>
-      <div className={cx("text-[32px] font-semibold leading-none tracking-tight", tone === "danger" && value > 0 && "text-danger")}>
-        <CountUp value={value} decimals={decimals} suffix={suffix} />
+    <div className={cx("card lift relative h-full p-4 sm:p-5", primary && "card-accent")}>
+      <div className="relative z-[1] flex items-start justify-between gap-2">
+        <div className={cx("text-[34px] font-bold leading-none tracking-tight sm:text-[40px]", danger && !primary && "text-danger")}>
+          <CountUp value={value} decimals={decimals} suffix={suffix} />
+        </div>
+        {icon ? (
+          <span
+            className={cx(
+              "flex h-9 w-9 flex-none items-center justify-center rounded-xl",
+              primary ? "bg-black/10 text-[#111111]" : danger ? "bg-danger-tint text-danger" : "bg-accent-tint text-accent-ink",
+            )}
+          >
+            {icon}
+          </span>
+        ) : null}
       </div>
-      <div className="mt-2 text-[13px] font-medium text-ink">{label}</div>
-      {context ? <div className="mt-1 text-xs text-muted tnum">{context}</div> : null}
+      <div className="relative z-[1] mt-3 text-[13px] font-semibold">{label}</div>
+      {context ? <div className={cx("relative z-[1] mt-0.5 text-xs tnum", primary ? "text-[#111111]/80" : "text-muted")}>{context}</div> : null}
+    </div>
+  );
+}
+
+/* Animated circular progress */
+export function ProgressRing({
+  value,
+  size = 112,
+  stroke = 10,
+  children,
+  onAccent,
+}: {
+  value: number; // 0..1
+  size?: number;
+  stroke?: number;
+  children?: ReactNode;
+  onAccent?: boolean;
+}) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(1, value || 0));
+  return (
+    <div className="relative flex-none" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} stroke={onAccent ? "rgba(17,17,17,0.14)" : "var(--line)"} />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          stroke={onAccent ? "#111111" : "var(--accent)"}
+          strokeDasharray={c}
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: c * (1 - v) }}
+          transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>
     </div>
   );
 }
@@ -295,8 +350,8 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center border border-dashed border-line-strong bg-surface px-6 py-12 text-center">
-      <div className="flex h-11 w-11 items-center justify-center border border-line bg-surface-2 text-muted">{icon}</div>
+    <div className="flex flex-col items-center rounded-3xl border border-dashed border-line-strong bg-surface/60 px-6 py-14 text-center">
+      <div className="float-slow flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-tint text-accent-ink">{icon}</div>
       <h3 className="mt-4 text-base font-semibold">{title}</h3>
       {body ? <p className="mt-1 max-w-sm text-sm text-muted">{body}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
@@ -306,8 +361,8 @@ export function EmptyState({
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center border border-danger-line bg-surface px-6 py-10 text-center" role="alert">
-      <div className="flex h-11 w-11 items-center justify-center border border-danger-line bg-danger-tint text-danger">
+    <div className="flex flex-col items-center card card-danger overflow-hidden px-6 py-10 text-center" role="alert">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-danger-line bg-danger-tint text-danger">
         <AlertTriangle size={20} />
       </div>
       <h3 className="mt-4 text-base font-semibold">Something went wrong</h3>
@@ -325,7 +380,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-[28px] font-semibold leading-tight sm:text-[30px]">{title}</h1>
+        <h1 className="text-[28px] font-bold leading-tight sm:text-[32px]">{title}</h1>
         {subtitle ? <p className="mt-1 text-sm text-muted tnum">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -339,7 +394,7 @@ export function SectionTitle({ children, count, tone }: { children: ReactNode; c
       {tone === "danger" ? <span className="pulse-dot" aria-hidden /> : null}
       <h2 className={cx("text-lg font-semibold", tone === "danger" && "text-danger")}>{children}</h2>
       {count !== undefined ? (
-        <span className="border border-line bg-surface-2 px-1.5 text-xs font-medium text-muted tnum">{count}</span>
+        <span className="rounded-full border border-line bg-surface-2 px-2 text-xs font-medium text-muted tnum">{count}</span>
       ) : null}
     </div>
   );
@@ -351,8 +406,8 @@ export const stagger = {
   show: { transition: { staggerChildren: 0.05 } },
 };
 export const staggerItem = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" as const } },
+  hidden: { opacity: 0, y: 14, scale: 0.98 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 380, damping: 28 } },
 };
 
 /* ------------------------------------------------------------------ */
@@ -392,7 +447,7 @@ export function Modal({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-backdrop sm:items-center sm:p-6"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-backdrop backdrop-blur-[3px] sm:items-center sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -403,12 +458,12 @@ export function Modal({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="flex max-h-[92dvh] w-full flex-col border border-line bg-surface"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-line bg-surface shadow-[var(--shadow-lg)] sm:rounded-[28px]"
             style={{ maxWidth: width }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 28, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
           >
             <div className="flex items-center justify-between border-b border-line py-2 pl-5 pr-2">
               <h2 className="text-lg font-semibold">{title}</h2>
@@ -443,7 +498,7 @@ export function Drawer({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-50 bg-backdrop"
+          className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[3px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -454,11 +509,11 @@ export function Drawer({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col border-l border-line bg-surface"
-            initial={{ x: 40, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 40, opacity: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col overflow-hidden border-line bg-surface shadow-[var(--shadow-lg)] sm:inset-y-3 sm:right-3 sm:rounded-[28px] sm:border"
+            initial={{ x: "105%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "105%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 34 }}
           >
             <div className="flex items-center justify-between border-b border-line py-2 pl-5 pr-2">
               <h2 className="truncate text-lg font-semibold">{title}</h2>
@@ -492,23 +547,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed right-3 top-[68px] z-[60] flex w-[min(360px,calc(100vw-24px))] flex-col gap-2" aria-live="polite">
+      <div className="pointer-events-none fixed right-3 top-[88px] z-[60] flex w-[min(360px,calc(100vw-24px))] flex-col gap-2" aria-live="polite">
         <AnimatePresence initial={false}>
           {toasts.map((t) => (
             <motion.div
               key={t.id}
               layout
-              initial={{ opacity: 0, x: 24, y: -8 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              initial={{ opacity: 0, x: 40, scale: 0.92 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 40, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 420, damping: 30 }}
               className={cx(
-                "pointer-events-auto flex items-start gap-3 border border-l-2 border-line bg-surface p-3",
-                t.tone === "error" ? "border-l-danger" : t.tone === "success" ? "border-l-success" : "border-l-accent",
+                "floating pointer-events-auto flex items-start gap-3 rounded-2xl p-3.5",
               )}
               role="status"
             >
-              <span className={cx("mt-0.5", t.tone === "error" ? "text-danger" : t.tone === "success" ? "text-success" : "text-accent-ink")}>
+              <span className={cx("flex h-7 w-7 flex-none items-center justify-center rounded-full", t.tone === "error" ? "bg-danger-tint text-danger" : t.tone === "success" ? "bg-success-tint text-success" : "bg-accent-tint text-accent-ink")}>
                 {t.tone === "error" ? <AlertTriangle size={16} /> : <Check size={16} />}
               </span>
               <div className="min-w-0 flex-1">

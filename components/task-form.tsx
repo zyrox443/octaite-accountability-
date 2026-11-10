@@ -132,7 +132,7 @@ export function TaskFormModal({
         noValidate
       >
         {errors.form ? (
-          <p role="alert" className="border border-danger-line bg-danger-tint px-3 py-2.5 text-[13px] text-danger">
+          <p role="alert" className="rounded-xl border border-danger-line bg-danger-tint px-3 py-2.5 text-[13px] text-danger">
             {errors.form}
           </p>
         ) : null}
@@ -179,7 +179,7 @@ export function TaskFormModal({
           </Field>
         </div>
         {!editing ? (
-          <p className="border-l-2 border-accent bg-accent-tint px-3 py-2 text-[13px] text-ink">
+          <p className="rounded-xl bg-accent-tint px-3.5 py-2.5 text-[13px] text-ink">
             Once added, the due time and estimated hours are locked and the task cannot be deleted. Only the admin can change them.
           </p>
         ) : null}

@@ -1,15 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CalendarCheck, Plus } from "lucide-react";
+import { AlarmClock, CalendarCheck, CircleCheckBig, ListTodo, Plus, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth, useTableChanges, useTick } from "@/components/providers";
 import { TaskCard } from "@/components/task-card";
 import { TaskDrawer } from "@/components/task-drawer";
 import { TaskFormModal } from "@/components/task-form";
-import { Button, EmptyState, ErrorState, PageHeader, SectionTitle, Skeleton, StatCard, stagger, staggerItem } from "@/components/ui";
+import { Button, CountUp, EmptyState, ErrorState, ProgressRing, SectionTitle, Skeleton, StatCard, stagger, staggerItem } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { fmtHours, fmtLongDay, pkDate } from "@/lib/time";
+import { fmtHours, fmtLongDay, pkDate, pkHM } from "@/lib/time";
 import { normalizeTask, type Task } from "@/lib/types";
 
 export default function MyDayPage() {
@@ -65,20 +65,60 @@ export default function MyDayPage() {
     overdue: (tasks ?? []).filter((t) => t.status === "overdue").length,
   };
   const openTask = tasks?.find((t) => t.id === openId) ?? null;
+  const hm = pkHM();
+  const greeting = hm < "12:00" ? "Good morning" : hm < "17:00" ? "Good afternoon" : "Good evening";
   const action = (t: Task) =>
     t.status === "pending" || t.status === "overdue" ? (t.rejection_reason ? "Resubmit proof" : "Submit proof") : "View";
 
   return (
     <div>
-      <PageHeader
-        title="My Day"
-        subtitle={fmtLongDay()}
-        actions={
-          <Button variant="primary" onClick={() => setAdding(true)}>
-            <Plus size={16} /> Add task
-          </Button>
-        }
-      />
+      <motion.section
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        className="card relative mb-5 overflow-hidden p-5 sm:mb-6 sm:p-7"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-28 right-40 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-accent-tint px-3 py-1 text-xs font-semibold text-accent-ink tnum">
+              <Sparkles size={13} /> {fmtLongDay()}
+            </p>
+            <h1 className="mt-3 text-[28px] font-bold leading-tight sm:text-[34px]">
+              {greeting}, {profile!.full_name.split(" ")[0]}
+            </h1>
+            <p className="mt-1 text-sm text-muted">
+              {tasks === null
+                ? "Loading your day"
+                : stats.planned === 0
+                  ? "Nothing planned yet. Add what you will deliver today."
+                  : stats.overdue > 0
+                    ? `${stats.overdue} overdue ${stats.overdue === 1 ? "task needs" : "tasks need"} proof before anything else.`
+                    : stats.done === stats.planned
+                      ? "Everything planned for today is done. Nice work."
+                      : `${stats.planned - stats.done} of ${stats.planned} still to finish today.`}
+            </p>
+            <Button variant="primary" className="mt-5" onClick={() => setAdding(true)}>
+              <Plus size={16} /> Add task
+            </Button>
+          </div>
+          <div className="flex items-center gap-4 self-start sm:self-auto">
+            <ProgressRing value={stats.planned ? stats.done / stats.planned : 0} size={124} stroke={11}>
+              <span className="text-[26px] font-bold leading-none">
+                <CountUp value={stats.planned ? Math.round((stats.done / stats.planned) * 100) : 0} suffix="%" />
+              </span>
+              <span className="mt-1 text-[11px] font-medium text-muted">done today</span>
+            </ProgressRing>
+            <div className="text-sm">
+              <p className="font-semibold tnum">
+                {stats.done} / {stats.planned} tasks
+              </p>
+              <p className="text-muted tnum">{fmtHours(stats.hours)}h planned</p>
+            </div>
+          </div>
+        </div>
+      </motion.section>
 
       {error ? (
         <ErrorState message={error} onRetry={load} />
@@ -88,21 +128,21 @@ export default function MyDayPage() {
         <>
           <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <motion.div variants={staggerItem}>
-              <StatCard primary label="Planned today" value={stats.planned} context={`${fmtHours(stats.hours)}h estimated`} />
+              <StatCard primary icon={<ListTodo size={18} />} label="Planned today" value={stats.planned} context={`${fmtHours(stats.hours)}h estimated`} />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <StatCard label="Completed today" value={stats.done} context={`${stats.approved} approved`} />
+              <StatCard icon={<CircleCheckBig size={18} />} label="Completed today" value={stats.done} context={`${stats.approved} approved`} />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <StatCard label="Still to do" value={todayAll.filter((t) => t.status === "pending").length} context="Pending today" />
+              <StatCard icon={<CalendarCheck size={18} />} label="Still to do" value={todayAll.filter((t) => t.status === "pending").length} context="Pending today" />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <StatCard label="Overdue" value={stats.overdue} tone="danger" context={stats.overdue ? "Needs proof now" : "Nothing overdue"} />
+              <StatCard icon={<AlarmClock size={18} />} label="Overdue" value={stats.overdue} tone="danger" context={stats.overdue ? "Needs proof now" : "Nothing overdue"} />
             </motion.div>
           </motion.div>
 
           {groups.due.length > 0 ? (
-            <section className="mt-8 border border-danger-line bg-surface p-4 sm:p-5">
+            <section className="card card-danger mt-8 overflow-hidden p-4 sm:p-5">
               <SectionTitle tone="danger" count={groups.due.length}>
                 My Due Tasks
               </SectionTitle>
@@ -125,7 +165,7 @@ export default function MyDayPage() {
                 }
               />
             ) : groups.todays.length === 0 ? (
-              <p className="border border-line bg-surface px-4 py-6 text-center text-sm text-muted">All of today&apos;s tasks are listed under My Due Tasks.</p>
+              <p className="card px-4 py-6 text-center text-sm text-muted">All of today&apos;s tasks are listed under My Due Tasks.</p>
             ) : (
               <TaskList tasks={groups.todays} onOpen={setOpenId} action={action} />
             )}

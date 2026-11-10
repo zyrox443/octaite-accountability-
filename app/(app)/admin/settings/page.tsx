@@ -65,7 +65,7 @@ export default function SettingsPage() {
       {!loaded ? (
         <Skeleton className="h-[420px] max-w-[640px]" />
       ) : (
-        <form onSubmit={save} noValidate className="max-w-[640px] border border-line bg-surface">
+        <form onSubmit={save} noValidate className="card max-w-[640px] overflow-hidden">
           <section className="flex flex-col gap-4 border-b border-line p-5">
             <h2 className="text-lg font-semibold">Company</h2>
             <Field label="Company name" error={errors.company}>
@@ -97,8 +97,8 @@ export default function SettingsPage() {
                       aria-pressed={on}
                       onClick={() => setWorkDays((w) => (on ? w.filter((x) => x !== d.n) : [...w, d.n]))}
                       className={cx(
-                        "h-11 w-14 border text-[13px] font-medium transition-colors",
-                        on ? "border-accent bg-accent text-on-accent" : "border-line-strong bg-surface text-muted hover:border-accent",
+                        "h-11 w-14 rounded-xl border text-[13px] font-medium transition-colors",
+                        on ? "btn-primary" : "border-line-strong bg-surface text-muted hover:border-accent",
                       )}
                     >
                       {d.l}

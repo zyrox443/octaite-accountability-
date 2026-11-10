@@ -258,7 +258,7 @@ export function TaskDrawer({
           </div>
 
           {task.rejection_reason && task.status !== "approved" && task.status !== "submitted" ? (
-            <div className="border border-danger-line bg-danger-tint p-3" role="alert">
+            <div className="rounded-2xl border border-danger-line bg-danger-tint p-4" role="alert">
               <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-danger">Rejected by admin</p>
               <p className="mt-1 break-words text-sm text-ink">{task.rejection_reason}</p>
               {isOwner ? <p className="mt-1 text-[13px] text-muted">Fix the issue, update your proof and submit again.</p> : null}
@@ -267,7 +267,7 @@ export function TaskDrawer({
 
           {task.description ? <p className="whitespace-pre-wrap break-words text-sm text-ink">{task.description}</p> : null}
 
-          <dl className="grid grid-cols-2 gap-px border border-line bg-line text-sm">
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line text-sm">
             <Meta label="Planned start" value={fmtDateTime(task.planned_start_at, true)} />
             <Meta label="Estimated hours" value={`${fmtHours(task.estimated_hours)}h`} />
             <Meta label="Due" value={fmtDateTime(task.due_at, true)} />
@@ -306,7 +306,7 @@ export function TaskDrawer({
                 <Skeleton className="aspect-square" />
               </div>
             ) : proofs.length === 0 && !canSubmit ? (
-              <p className="border border-dashed border-line-strong px-4 py-6 text-center text-sm text-muted">No proof has been added yet.</p>
+              <p className="rounded-2xl border border-dashed border-line-strong px-4 py-6 text-center text-sm text-muted">No proof has been added yet.</p>
             ) : (
               <ProofList
                 proofs={proofs}
@@ -366,7 +366,7 @@ export function TaskDrawer({
 
                 <AnimatePresence initial={false}>
                   {uploads.map((u) => (
-                    <motion.div key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border border-line p-3">
+                    <motion.div key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-2xl border border-line p-3">
                       <div className="flex items-center justify-between gap-3 text-[13px]">
                         <span className="truncate">{u.name}</span>
                         {u.error ? (
@@ -380,8 +380,8 @@ export function TaskDrawer({
                       {u.error ? (
                         <p className="mt-1 text-[13px] text-danger">{u.error}</p>
                       ) : (
-                        <div className="mt-2 h-1 bg-surface-2" role="progressbar" aria-valuenow={Math.round(u.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-                          <div className="h-full bg-accent transition-[width] duration-150" style={{ width: `${u.progress * 100}%` }} />
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={Math.round(u.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+                          <div className="h-full rounded-full bg-accent transition-[width] duration-150" style={{ width: `${u.progress * 100}%` }} />
                         </div>
                       )}
                     </motion.div>
@@ -464,7 +464,7 @@ export function ProofList({
           {images.map((p) => {
             const url = urls[p.storage_path!];
             return (
-              <div key={p.id} className="group relative aspect-square border border-line bg-surface-2">
+              <div key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-line bg-surface-2">
                 {url ? (
                   <a href={url} target="_blank" rel="noreferrer" title={p.file_name ?? ""}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -477,7 +477,7 @@ export function ProofList({
                   <button
                     aria-label={`Remove ${p.file_name}`}
                     onClick={() => onRemove(p)}
-                    className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center border border-line bg-surface text-ink"
+                    className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface text-ink shadow-sm"
                   >
                     <X size={14} />
                   </button>
@@ -491,14 +491,14 @@ export function ProofList({
         const href = p.kind === "link" ? p.url! : urls[p.storage_path!];
         const video = p.mime_type?.startsWith("video/");
         return (
-          <div key={p.id} className="flex items-center gap-3 border border-line bg-surface">
+          <div key={p.id} className="flex items-center gap-3 overflow-hidden rounded-2xl border border-line bg-surface">
             <a
               href={href}
               target="_blank"
               rel="noreferrer"
               className="flex min-h-12 min-w-0 flex-1 items-center gap-3 px-3 py-2 hover:bg-surface-2"
             >
-              <span className="flex h-8 w-8 flex-none items-center justify-center border border-line bg-surface-2 text-muted">
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-2xl border border-line bg-surface-2 text-muted">
                 {p.kind === "link" ? <Link2 size={16} /> : video ? <Film size={16} /> : <FileText size={16} />}
               </span>
               <span className="min-w-0 flex-1">
