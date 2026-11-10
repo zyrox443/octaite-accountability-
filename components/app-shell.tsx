@@ -1,0 +1,406 @@
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { Bell, CheckCheck, LogOut, Menu, Moon, Sun, X } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { fmtRelative } from "@/lib/time";
+import type { Notification } from "@/lib/types";
+import { AuthProvider, NotificationsProvider, useAuth, useNotifications, useTheme } from "./providers";
+import { Avatar, ErrorState, IconButton, Skeleton, cx } from "./ui";
+
+const memberLinks = [
+  { href: "/my-day", label: "My Day" },
+  { href: "/leaderboard", label: "Leaderboard" },
+];
+const adminLinks = [
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/approvals", label: "Approvals" },
+  { href: "/admin/team", label: "Team" },
+  { href: "/admin/settings", label: "Settings" },
+];
+
+function isActive(path: string, href: string) {
+  if (href === "/admin") return path === "/admin";
+  return path === href || path.startsWith(href + "/");
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <AuthProvider>
+      <NotificationsProvider>
+        <Shell>{children}</Shell>
+      </NotificationsProvider>
+    </AuthProvider>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  const { profile, loading, error } = useAuth();
+  const path = usePathname();
+  const router = useRouter();
+  const isAdminRoute = path.startsWith("/admin");
+  const blocked = !!profile && isAdminRoute && profile.role !== "admin";
+
+  useEffect(() => {
+    if (blocked) router.replace("/my-day");
+  }, [blocked, router]);
+
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <TopNav />
+      <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        {error ? (
+          <ErrorState message={error} onRetry={() => window.location.reload()} />
+        ) : loading || blocked ? (
+          <ShellSkeleton />
+        ) : (
+          <motion.div
+            key={path}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {children}
+          </motion.div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export function ShellSkeleton() {
+  return (
+    <div>
+      <Skeleton className="h-9 w-48" />
+      <Skeleton className="mt-2 h-4 w-64" />
+      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-[112px]" />
+        ))}
+      </div>
+      <div className="mt-8 flex flex-col gap-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-[84px]" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopNav() {
+  const { profile, signOut } = useAuth();
+  const path = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const links = profile ? (profile.role === "admin" ? [...memberLinks, ...adminLinks] : memberLinks) : [];
+
+  useEffect(() => setMenuOpen(false), [path]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen]);
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-surface">
+      <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-2 px-4 sm:px-6 lg:px-8">
+        <Link href={profile?.role === "admin" ? "/admin" : "/my-day"} className="flex min-h-11 items-center gap-2.5 pr-2" aria-label="Daybook home">
+          <span className="flex h-7 w-7 items-center justify-center bg-accent text-[13px] font-bold text-on-accent">D</span>
+          <span className="text-[15px] font-semibold tracking-tight">Daybook</span>
+        </Link>
+
+        <nav className="mx-auto hidden h-full items-stretch md:flex" aria-label="Main">
+          {links.map((l) => {
+            const active = isActive(path, l.href);
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                aria-current={active ? "page" : undefined}
+                className={cx(
+                  "relative flex items-center px-3.5 text-sm font-medium transition-colors lg:px-4",
+                  active ? "text-ink" : "text-muted hover:text-ink",
+                )}
+              >
+                {l.label}
+                {active ? (
+                  <motion.span
+                    layoutId="nav-underline"
+                    className="absolute inset-x-3 -bottom-px h-0.5 bg-accent"
+                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  />
+                ) : null}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="ml-auto flex items-center md:ml-0">
+          {profile ? <NotificationBell /> : null}
+          <ThemeToggle />
+          {profile ? <UserMenu className="hidden md:block" /> : null}
+          <IconButton label="Open menu" className="md:hidden" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen}>
+            <Menu size={20} />
+          </IconButton>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {menuOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 bg-backdrop md:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={(e) => e.target === e.currentTarget && setMenuOpen(false)}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu"
+              className="absolute inset-y-0 right-0 flex w-[min(320px,86vw)] flex-col border-l border-line bg-surface"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex h-14 items-center justify-between border-b border-line pl-5 pr-2">
+                <span className="text-sm font-semibold">Menu</span>
+                <IconButton label="Close menu" onClick={() => setMenuOpen(false)}>
+                  <X size={20} />
+                </IconButton>
+              </div>
+              <nav className="flex flex-1 flex-col overflow-y-auto py-2" aria-label="Mobile">
+                {links.map((l) => {
+                  const active = isActive(path, l.href);
+                  return (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      aria-current={active ? "page" : undefined}
+                      className={cx(
+                        "flex min-h-12 items-center border-l-2 px-5 text-[15px] font-medium",
+                        active ? "border-accent bg-accent-tint text-ink" : "border-transparent text-muted",
+                      )}
+                    >
+                      {l.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              {profile ? (
+                <div className="border-t border-line p-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={profile.full_name} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{profile.full_name}</p>
+                      <p className="truncate text-xs text-muted">{profile.title || profile.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={signOut}
+                    className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong text-sm font-medium"
+                  >
+                    <LogOut size={16} /> Sign out
+                  </button>
+                </div>
+              ) : null}
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </header>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  return (
+    <IconButton label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} onClick={toggle}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={theme}
+          initial={{ rotate: -90, opacity: 0 }}
+          animate={{ rotate: 0, opacity: 1 }}
+          exit={{ rotate: 90, opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="flex"
+        >
+          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+        </motion.span>
+      </AnimatePresence>
+    </IconButton>
+  );
+}
+
+function useClickOutside(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, close]);
+  return ref;
+}
+
+function UserMenu({ className }: { className?: string }) {
+  const { profile, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useClickOutside(open, () => setOpen(false));
+  if (!profile) return null;
+  return (
+    <div className={cx("relative ml-1", className)} ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Account menu"
+        aria-expanded={open}
+        className="flex h-11 w-11 items-center justify-center"
+      >
+        <Avatar name={profile.full_name} size={32} />
+      </button>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-[calc(100%+6px)] w-60 border border-line bg-surface"
+          >
+            <div className="border-b border-line p-3">
+              <p className="truncate text-sm font-medium">{profile.full_name}</p>
+              <p className="truncate text-xs text-muted">{profile.email}</p>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-accent-ink">
+                {profile.role === "admin" ? "Admin" : profile.title || "Member"}
+              </p>
+            </div>
+            <button onClick={signOut} className="flex min-h-11 w-full items-center gap-2 px-3 text-sm hover:bg-surface-2">
+              <LogOut size={16} /> Sign out
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function notifHref(n: Notification, admin: boolean) {
+  if (!admin) return "/my-day";
+  if (n.type === "task_submitted") return "/admin/approvals";
+  if (n.type === "no_plan" && n.subject_user_id) return `/admin/team/${n.subject_user_id}`;
+  return "/admin";
+}
+
+function NotificationBell() {
+  const { profile } = useAuth();
+  const { items, unread, shake, markRead, markAllRead } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const ref = useClickOutside(open, () => setOpen(false));
+  const router = useRouter();
+  const admin = profile?.role === "admin";
+
+  return (
+    <div className="relative" ref={ref}>
+      <IconButton
+        label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="relative"
+      >
+        <motion.span
+          key={shake}
+          className="flex origin-top"
+          animate={shake ? { rotate: [0, -16, 13, -9, 6, 0] } : undefined}
+          transition={{ duration: 0.55 }}
+        >
+          <Bell size={18} />
+        </motion.span>
+        <AnimatePresence>
+          {unread > 0 ? (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center bg-[#dc2626] px-1 text-[11px] font-semibold leading-none text-white tnum"
+            >
+              {unread > 99 ? "99+" : unread}
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
+      </IconButton>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-x-3 top-[60px] z-50 flex max-h-[70dvh] flex-col border border-line bg-surface sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+6px)] sm:w-[380px]"
+          >
+            <div className="flex items-center justify-between border-b border-line py-1 pl-4 pr-1">
+              <span className="text-sm font-semibold">Notifications</span>
+              <button
+                onClick={markAllRead}
+                disabled={!unread}
+                className="flex min-h-11 items-center gap-1.5 px-3 text-[13px] font-medium text-accent-ink disabled:text-muted disabled:opacity-60"
+              >
+                <CheckCheck size={15} /> Mark all read
+              </button>
+            </div>
+            <div className="overflow-y-auto">
+              {items.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-muted">You are all caught up.</p>
+              ) : (
+                items.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      markRead(n.id);
+                      setOpen(false);
+                      router.push(notifHref(n, !!admin));
+                    }}
+                    className={cx(
+                      "flex w-full items-start gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface-2",
+                      !n.read_at && "bg-accent-tint",
+                    )}
+                  >
+                    <span
+                      className="mt-1.5 h-2 w-2 flex-none"
+                      style={{
+                        background: n.read_at
+                          ? "transparent"
+                          : n.type === "task_approved"
+                            ? "var(--st-approved-bar)"
+                            : n.type === "task_submitted"
+                              ? "var(--st-submitted-bar)"
+                              : "var(--st-overdue-bar)",
+                      }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-semibold">{n.title}</span>
+                      <span className="mt-0.5 block break-words text-[13px] text-muted">{n.body}</span>
+                      <span className="mt-1 block text-xs text-muted tnum">{fmtRelative(n.created_at)}</span>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
