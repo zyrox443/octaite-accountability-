@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ExternalLink, FileText, Film, Link2, Pause, Pencil, Play, Trash2, UploadCloud, X } from "lucide-react";
+import { Check, ExternalLink, FileText, Film, Link2, Pencil, Play, Trash2, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addProofLink, removeProof, signProofs, uploadProofFile, MAX_FILE_BYTES } from "@/lib/proofs";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -81,12 +81,13 @@ export function TaskDrawer({
     return () => clearInterval(id);
   }, [running]);
 
-  async function toggleTimer() {
-    if (!task) return;
+  // There is no pause: once started, a task runs until it is completed.
+  async function startTimer() {
+    if (!task || task.started_at) return;
     setBusy("timer");
-    const { error } = await supabaseBrowser().rpc(task.started_at ? "pause_task" : "start_task", { p_task_id: task.id });
+    const { error } = await supabaseBrowser().rpc("start_task", { p_task_id: task.id });
     setBusy("");
-    if (error) return toast({ title: task.started_at ? "Could not pause" : "Could not start", body: error.message, tone: "error" });
+    if (error) return toast({ title: "Could not start", body: error.message, tone: "error" });
     setSubmitError("");
     announceTasksChanged();
     onChanged();
@@ -254,7 +255,7 @@ export function TaskDrawer({
       ) : null}
       {canSubmit ? (
         <Button variant="primary" onClick={submit} loading={busy === "submit"}>
-          Submit for approval
+          <Check size={16} /> Complete task
         </Button>
       ) : null}
     </>
@@ -295,19 +296,20 @@ export function TaskDrawer({
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: running ? "var(--running)" : "var(--muted)" }}>
                   {running ? <span className="live-dot" aria-hidden /> : null}
-                  {running ? "Task running" : task.worked_seconds > 0 ? "Paused" : "Not started"}
+                  {running ? "Task running" : task.worked_seconds > 0 ? "Stopped" : "Not started"}
                 </p>
                 <p className="mt-1 text-[28px] font-bold leading-none tracking-tight tnum">{fmtClock(workedSeconds(task))}</p>
                 <p className="mt-1.5 text-xs text-muted">
                   {running
-                    ? "Keep this app open. If you close it while the task is running, the task is discarded."
-                    : "Only time on the timer counts for the leaderboard, up to the estimate."}
+                    ? "Keep this app open until you complete the task. If you close it while the task is running, the task is discarded."
+                    : "Once started, the task runs until you complete it. It cannot be paused."}
                 </p>
               </div>
-              <Button variant={running ? "secondary" : "primary"} onClick={toggleTimer} loading={busy === "timer"} className="flex-none">
-                {running ? <Pause size={16} /> : <Play size={16} />}
-                {running ? "Pause" : task.worked_seconds > 0 ? "Resume" : "Start task"}
-              </Button>
+              {running ? null : (
+                <Button variant="primary" onClick={startTimer} loading={busy === "timer"} className="flex-none">
+                  <Play size={16} /> {task.worked_seconds > 0 ? "Continue task" : "Start task"}
+                </Button>
+              )}
             </div>
           ) : null}
 

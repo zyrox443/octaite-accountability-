@@ -12,6 +12,7 @@ A daily accountability app for a small team. Members plan their day, upload proo
 | `supabase/migrations/20261110000000_init.sql` | The whole database: tables, security rules, storage bucket and policies, the 5-minute cron job |
 | `supabase/migrations/20261110010000_signup_reminders.sql` | Update 2: sign-up with approval, profile pictures, reminders |
 | `supabase/migrations/20261113000000_timers_presence.sql` | Update 3: task timers and actual hours, online status, auto-discard, siren reminders |
+| `supabase/migrations/20261113010000_no_pause.sql` | Update 4: removes the ability to pause a task |
 | `supabase/go_live.sql` | Removes all sample data and creates your admin account |
 | `supabase/seed.sql` | Sample data: 1 admin, 4 members, sample tasks |
 | `.env.example` | The three keys the app needs |
@@ -156,14 +157,14 @@ Submitted -> Rejected -> back to Pending (or Overdue if the due time has passed)
 - The original due time is stored permanently next to the current due time and the actual completion time.
 
 ### Task timer and actual hours
-- A member opens a task and clicks **Start task**. A timer runs; they can **Pause** and **Resume**. Only one task can run at a time.
+- A member opens a task and clicks **Start task**. A timer runs until they click **Complete task**. There is no pause. Only one task can run at a time.
 - A task cannot be submitted until its timer has been started.
 - Hours counted for the leaderboard = time on the timer, capped at the estimate. Example: estimate 6h, submitted after 4h of work, counts as 4h.
 
 ### Online status and leaving the app
 - A member shows as **Online** only while they are signed in with the app open in a browser tab. Switching to other tabs is fine.
 - Closing the tab (or signing out) while a task is running shows a confirmation. If the app stays closed longer than the allowance in **Settings** (3 minutes by default), the running task becomes **Discarded**: it earns no hours, the admin is notified, and it stays on record on the member's page.
-- Pausing a task first lets a member close the app without losing it.
+- While a task is running the app shows its own warning when the pointer heads for the tab bar or close button, and the browser asks for confirmation on close.
 
 ### Reminders
 - **Remind** on the Dashboard makes the member's app play a siren and show a pop-up that blocks the app until they click **Sorry, starting now**.

@@ -10,7 +10,6 @@ import type { Notification } from "@/lib/types";
 import { AuthProvider, NotificationsProvider, useAuth, useNotifications, useTheme } from "./providers";
 import { PresenceProvider, RunningBar, usePresence } from "./presence";
 import { Avatar, Button, ErrorState, IconButton, Modal, Skeleton, cx } from "./ui";
-import { supabaseBrowser } from "@/lib/supabase/client";
 
 const memberLinks = [
   { href: "/my-day", label: "My Day" },
@@ -100,7 +99,6 @@ function useGuardedSignOut() {
   const { signOut } = useAuth();
   const { runningTask } = usePresence();
   const [asking, setAsking] = useState(false);
-  const [busy, setBusy] = useState(false);
   const request = () => (runningTask ? setAsking(true) : signOut());
   const dialog = (
     <Modal
@@ -112,18 +110,7 @@ function useGuardedSignOut() {
         <>
           <Button onClick={() => setAsking(false)}>Stay</Button>
           <Button variant="danger" onClick={signOut}>
-            Sign out anyway
-          </Button>
-          <Button
-            variant="primary"
-            loading={busy}
-            onClick={async () => {
-              setBusy(true);
-              if (runningTask) await supabaseBrowser().rpc("pause_task", { p_task_id: runningTask.id });
-              await signOut();
-            }}
-          >
-            Pause task and sign out
+            Sign out and discard task
           </Button>
         </>
       }
@@ -132,7 +119,7 @@ function useGuardedSignOut() {
         <span className="font-semibold">{runningTask?.title}</span> is running. If you leave the app while it is running, the task will be
         discarded and you will have to add it again.
       </p>
-      <p className="mt-2 text-[13px] text-muted">Pause it first to keep the time you have worked.</p>
+      <p className="mt-2 text-[13px] text-muted">Complete the task first to keep your work.</p>
     </Modal>
   );
   return { request, dialog };

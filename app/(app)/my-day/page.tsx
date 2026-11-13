@@ -72,11 +72,11 @@ export default function MyDayPage() {
   const action = (t: Task) =>
     t.status === "pending" || t.status === "overdue"
       ? t.started_at
-        ? "Open running task"
+        ? "Complete task"
         : t.rejection_reason
           ? "Resubmit proof"
           : t.worked_seconds > 0
-            ? "Resume or submit"
+            ? "Continue or complete"
             : "Start task"
       : "View";
 

@@ -59,7 +59,7 @@ export function TaskCard({
             </p>
           ) : task.worked_seconds > 0 && (task.status === "pending" || task.status === "overdue") ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted tnum">
-              <Timer size={14} /> Paused · {fmtDuration(task.worked_seconds * 1000)} worked
+              <Timer size={14} /> {fmtDuration(task.worked_seconds * 1000)} worked
             </p>
           ) : task.credited_hours != null && (task.status === "submitted" || task.status === "approved") ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted tnum">

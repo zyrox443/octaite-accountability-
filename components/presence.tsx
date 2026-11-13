@@ -1,12 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Pause, Siren, TriangleAlert } from "lucide-react";
+import { Siren, TriangleAlert } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useAuth, useNotifications, useTableChanges } from "./providers";
 import { workedSeconds } from "@/lib/types";
-import { Button, Modal, useToast } from "./ui";
+import { Button, Modal } from "./ui";
 
 type Running = { id: string; title: string; started_at: string | null; worked_seconds: number } | null;
 
@@ -103,19 +103,22 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [isRunning]);
 
-  const toast = useToast();
-  const [pausing, setPausing] = useState(false);
-  async function pauseRunning() {
-    if (!runningTask) return;
-    setPausing(true);
-    const { error } = await supabaseBrowser().rpc("pause_task", { p_task_id: runningTask.id });
-    setPausing(false);
-    if (error) return toast({ title: "Could not pause", body: error.message, tone: "error" });
-    setStayed(false);
-    toast({ title: "Task paused", body: "You can close the app now without losing it.", tone: "success" });
-    loadRunning();
-    announceTasksChanged();
-  }
+  // The app's own warning. A web page cannot react to the tab's close button
+  // itself, so this appears as soon as the pointer leaves the top of the page
+  // heading for the tab bar or the window's close button.
+  const lastWarned = useRef(0);
+  useEffect(() => {
+    if (!isRunning) return;
+    const onLeave = (e: MouseEvent) => {
+      if (e.relatedTarget || e.clientY > 0) return;
+      const now = Date.now();
+      if (now - lastWarned.current < 60_000) return; // do not nag on every tab switch
+      lastWarned.current = now;
+      setStayed(true);
+    };
+    document.documentElement.addEventListener("mouseleave", onLeave);
+    return () => document.documentElement.removeEventListener("mouseleave", onLeave);
+  }, [isRunning]);
 
   const value = useMemo(() => ({ runningTask }), [runningTask]);
   return (
@@ -131,12 +134,13 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         }
       >
         <p className="text-sm">
-          <span className="font-semibold">{runningTask?.title}</span> is running. Keep this tab open until you pause or submit it.
+          <span className="font-semibold">{runningTask?.title}</span> is running. Keep this tab open until you complete it.
         </p>
         <p className="mt-2 text-[13px] text-muted">If you close the app while a task is running, the task is discarded.</p>
       </Modal>
 
-      {/* Second warning, shown after the browser's own "Leave site?" prompt. */}
+      {/* The app's own warning: shown when the pointer heads for the tab bar or
+          close button, and again if the person cancels the browser prompt. */}
       <Modal
         open={isRunning && stayed}
         onClose={() => setStayed(false)}
@@ -144,9 +148,6 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         width={480}
         footer={
           <>
-            <Button onClick={pauseRunning} loading={pausing}>
-              <Pause size={15} /> Pause task so I can leave
-            </Button>
             <Button variant="primary" onClick={() => setStayed(false)} autoFocus>
               Keep working
             </Button>
@@ -162,7 +163,9 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
               <span className="font-semibold">{runningTask?.title}</span> is still running. If you close or leave the app now, this task
               will be <span className="font-semibold text-danger">discarded</span> and your admin will be notified.
             </p>
-            <p className="mt-2 text-[13px] text-muted">Pause the task first if you need to step away. Your time so far is kept.</p>
+            <p className="mt-2 text-[13px] text-muted">
+              You can switch to other tabs, but keep this one open. Complete the task before you close the app.
+            </p>
           </div>
         </div>
       </Modal>
@@ -209,7 +212,7 @@ export function RunningBar() {
             </span>
             <span className="min-w-0 max-w-full truncate font-medium">{runningTask.title}</span>
             <span className="font-semibold tnum">{clock(workedSeconds(runningTask))}</span>
-            <span className="text-muted sm:ml-auto">Do not close this tab. Closing it discards the task.</span>
+            <span className="text-muted sm:ml-auto">Do not close this tab until the task is complete. Closing it discards the task.</span>
           </div>
         </motion.div>
       ) : null}
