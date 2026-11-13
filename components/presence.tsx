@@ -1,13 +1,20 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Siren } from "lucide-react";
+import { Pause, Siren, TriangleAlert } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useAuth, useNotifications, useTableChanges } from "./providers";
-import { Button } from "./ui";
+import { workedSeconds } from "@/lib/types";
+import { Button, Modal, useToast } from "./ui";
 
-type Running = { id: string; title: string } | null;
+type Running = { id: string; title: string; started_at: string | null; worked_seconds: number } | null;
+
+/** Fire this after starting, pausing or submitting a task so the guard updates at once. */
+export const TASKS_CHANGED = "tasks:changed";
+export function announceTasksChanged() {
+  window.dispatchEvent(new Event(TASKS_CHANGED));
+}
 const PresenceCtx = createContext<{ runningTask: Running }>({ runningTask: null });
 export const usePresence = () => useContext(PresenceCtx);
 
@@ -45,34 +52,168 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
 
   const loadRunning = useCallback(async () => {
     if (!uid) return;
-    const { data } = await supabaseBrowser().from("tasks").select("id,title").eq("user_id", uid).not("started_at", "is", null).limit(1);
+    const { data, error } = await supabaseBrowser()
+      .from("tasks")
+      .select("id,title,started_at,worked_seconds")
+      .eq("user_id", uid)
+      .not("started_at", "is", null)
+      .limit(1);
+    if (error) return;
     setRunningTask(data && data.length ? (data[0] as Running) : null);
   }, [uid]);
+  // Three independent triggers, so the guard never depends on one of them:
+  // the app's own announcement, live database updates, and a 15 second poll.
   useEffect(() => {
     loadRunning();
+    window.addEventListener(TASKS_CHANGED, loadRunning);
+    const id = setInterval(loadRunning, 15_000);
+    return () => {
+      window.removeEventListener(TASKS_CHANGED, loadRunning);
+      clearInterval(id);
+    };
   }, [loadRunning]);
   useTableChanges(["tasks"], loadRunning, !!uid);
 
   // Browser confirmation when closing or reloading the tab with a task running.
   // Browsers show their own fixed wording here; custom text is not allowed.
   const isRunning = !!runningTask;
+  const [stayed, setStayed] = useState(false);
+  const [armed, setArmed] = useState(true);
+
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning) {
+      setStayed(false);
+      return;
+    }
+    // Browsers only show the close confirmation on pages the person has
+    // clicked or typed in since loading. If this page was just (re)opened
+    // with a task already running, ask for one click so the guard is armed.
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    setArmed(ua ? ua.hasBeenActive : true);
+
     const warn = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "A task is running. If you close the app it will be discarded.";
+      // First confirmation is the browser's. If the person chooses to stay,
+      // this timer fires and the app shows its own second warning.
+      window.setTimeout(() => setStayed(true), 400);
       return e.returnValue;
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [isRunning]);
 
+  const toast = useToast();
+  const [pausing, setPausing] = useState(false);
+  async function pauseRunning() {
+    if (!runningTask) return;
+    setPausing(true);
+    const { error } = await supabaseBrowser().rpc("pause_task", { p_task_id: runningTask.id });
+    setPausing(false);
+    if (error) return toast({ title: "Could not pause", body: error.message, tone: "error" });
+    setStayed(false);
+    toast({ title: "Task paused", body: "You can close the app now without losing it.", tone: "success" });
+    loadRunning();
+    announceTasksChanged();
+  }
+
   const value = useMemo(() => ({ runningTask }), [runningTask]);
   return (
     <PresenceCtx.Provider value={value}>
       {children}
+
+      {/* Shown once after a page load when a task is already running. */}
+      <Modal open={isRunning && !armed} onClose={() => setArmed(true)} title="Your task is still running" width={440}
+        footer={
+          <Button variant="primary" onClick={() => setArmed(true)} autoFocus>
+            Continue working
+          </Button>
+        }
+      >
+        <p className="text-sm">
+          <span className="font-semibold">{runningTask?.title}</span> is running. Keep this tab open until you pause or submit it.
+        </p>
+        <p className="mt-2 text-[13px] text-muted">If you close the app while a task is running, the task is discarded.</p>
+      </Modal>
+
+      {/* Second warning, shown after the browser's own "Leave site?" prompt. */}
+      <Modal
+        open={isRunning && stayed}
+        onClose={() => setStayed(false)}
+        title="Do not close the app yet"
+        width={480}
+        footer={
+          <>
+            <Button onClick={pauseRunning} loading={pausing}>
+              <Pause size={15} /> Pause task so I can leave
+            </Button>
+            <Button variant="primary" onClick={() => setStayed(false)} autoFocus>
+              Keep working
+            </Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-danger-tint text-danger">
+            <TriangleAlert size={20} />
+          </span>
+          <div>
+            <p className="text-sm">
+              <span className="font-semibold">{runningTask?.title}</span> is still running. If you close or leave the app now, this task
+              will be <span className="font-semibold text-danger">discarded</span> and your admin will be notified.
+            </p>
+            <p className="mt-2 text-[13px] text-muted">Pause the task first if you need to step away. Your time so far is kept.</p>
+          </div>
+        </div>
+      </Modal>
+
       <ReminderGate />
     </PresenceCtx.Provider>
+  );
+}
+
+function clock(total: number) {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+/** Always-visible strip under the top bar while a task is running. */
+export function RunningBar() {
+  const { runningTask } = usePresence();
+  const [, setTick] = useState(0);
+  const on = !!runningTask;
+  useEffect(() => {
+    if (!on) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [on]);
+  return (
+    <AnimatePresence>
+      {runningTask ? (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          className="mx-auto mt-3 w-full max-w-[1280px] px-4 sm:px-6 lg:px-8"
+          role="status"
+        >
+          <div
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border px-4 py-2.5 text-[13px]"
+            style={{ borderColor: "var(--running)", background: "var(--success-tint)" }}
+          >
+            <span className="live-dot" aria-hidden />
+            <span className="font-semibold" style={{ color: "var(--running)" }}>
+              Task running
+            </span>
+            <span className="min-w-0 max-w-full truncate font-medium">{runningTask.title}</span>
+            <span className="font-semibold tnum">{clock(workedSeconds(runningTask))}</span>
+            <span className="text-muted sm:ml-auto">Do not close this tab. Closing it discards the task.</span>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 

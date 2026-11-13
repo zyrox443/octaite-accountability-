@@ -7,6 +7,7 @@ import { addProofLink, removeProof, signProofs, uploadProofFile, MAX_FILE_BYTES 
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { fmtBytes, fmtDateTime, fmtDuration, fmtHours } from "@/lib/time";
 import { displayStatus, workedSeconds, type Profile, type Task, type TaskProof } from "@/lib/types";
+import { announceTasksChanged } from "./presence";
 import { overdueText } from "./task-card";
 import { Avatar, Button, Drawer, Field, Skeleton, StatusBadge, cx, inputClass, useToast } from "./ui";
 
@@ -87,6 +88,7 @@ export function TaskDrawer({
     setBusy("");
     if (error) return toast({ title: task.started_at ? "Could not pause" : "Could not start", body: error.message, tone: "error" });
     setSubmitError("");
+    announceTasksChanged();
     onChanged();
   }
 
@@ -167,6 +169,7 @@ export function TaskDrawer({
       return;
     }
     noteDrafts.delete(task.id);
+    announceTasksChanged();
     toast({ title: "Submitted for approval", body: task.title, tone: "success" });
     onChanged();
     onClose();

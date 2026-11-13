@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { fmtRelative } from "@/lib/time";
 import type { Notification } from "@/lib/types";
 import { AuthProvider, NotificationsProvider, useAuth, useNotifications, useTheme } from "./providers";
-import { PresenceProvider, usePresence } from "./presence";
+import { PresenceProvider, RunningBar, usePresence } from "./presence";
 import { Avatar, Button, ErrorState, IconButton, Modal, Skeleton, cx } from "./ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -55,6 +55,7 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <TopNav />
+      <RunningBar />
       <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {error ? (
           <ErrorState message={error} onRetry={() => window.location.reload()} />
