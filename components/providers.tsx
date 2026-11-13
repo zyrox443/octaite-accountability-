@@ -175,8 +175,9 @@ type NotifState = {
   shake: number;
   markRead: (id: string) => void;
   markAllRead: () => void;
+  clearAll: () => void;
 };
-const NotifCtx = createContext<NotifState>({ items: [], unread: 0, shake: 0, markRead: () => {}, markAllRead: () => {} });
+const NotifCtx = createContext<NotifState>({ items: [], unread: 0, shake: 0, markRead: () => {}, markAllRead: () => {}, clearAll: () => {} });
 export const useNotifications = () => useContext(NotifCtx);
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
@@ -209,7 +210,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           const n = payload.new as Notification;
           setItems((list) => (list.some((x) => x.id === n.id) ? list : [n, ...list].slice(0, 60)));
           setShake((s) => s + 1);
-          toast({ title: n.title, body: n.body, tone: n.type === "task_approved" ? "success" : n.type === "task_submitted" || n.type === "reminder" || n.type === "signup_request" ? "info" : "error" });
+          // Reminders show their own blocking pop-up with a siren instead of a toast.
+          if (n.type !== "reminder") toast({ title: n.title, body: n.body, tone: n.type === "task_approved" ? "success" : n.type === "task_submitted" || n.type === "signup_request" ? "info" : "error" });
         },
       )
       .subscribe();
@@ -230,7 +232,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     supabaseBrowser().from("notifications").update({ read_at: now }).is("read_at", null).then(() => {});
   }, []);
 
+  // Removes every notification, except reminders that have not been acknowledged yet.
+  const clearAll = useCallback(() => {
+    setItems((list) => list.filter((n) => n.type === "reminder" && !n.read_at));
+    supabaseBrowser().from("notifications").delete().or("type.neq.reminder,read_at.not.is.null").then(() => {});
+  }, []);
+
   const unread = items.filter((n) => !n.read_at).length;
-  const value = useMemo(() => ({ items, unread, shake, markRead, markAllRead }), [items, unread, shake, markRead, markAllRead]);
+  const value = useMemo(() => ({ items, unread, shake, markRead, markAllRead, clearAll }), [items, unread, shake, markRead, markAllRead, clearAll]);
   return <NotifCtx.Provider value={value}>{children}</NotifCtx.Provider>;
 }

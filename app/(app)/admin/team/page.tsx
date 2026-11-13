@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth, useTableChanges } from "@/components/providers";
 import { Avatar, Button, EmptyState, ErrorState, Field, Modal, PageHeader, RolesInput, Skeleton, cx, inputClass, stagger, staggerItem, useToast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { ROLE_PRESETS, joinRoles, splitRoles, type Profile } from "@/lib/types";
+import { ROLE_PRESETS, isOnline, joinRoles, splitRoles, type Profile } from "@/lib/types";
 
 function randomPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -21,15 +21,20 @@ export default function TeamPage() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
+  const [seen, setSeen] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabaseBrowser().from("profiles").select("*").order("role").order("full_name");
     if (err) return setError(err.message);
     setError(null);
     setPeople(data as Profile[]);
+    const pr = await supabaseBrowser().from("presence").select("user_id,last_seen_at");
+    setSeen(Object.fromEntries((pr.data ?? []).map((r) => [r.user_id, r.last_seen_at])));
   }, []);
   useEffect(() => {
     load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, [load]);
   useTableChanges(["profiles"], load);
   const toast = useToast();
@@ -107,14 +112,14 @@ export default function TeamPage() {
                   <span
                     className="inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
                     style={
-                      p.role === "admin" || p.pending_approval
+                      p.pending_approval
                         ? { color: "var(--accent-ink)", background: "var(--accent-tint)" }
-                        : p.is_active
+                        : p.is_active && isOnline(seen[p.id])
                           ? { color: "var(--st-approved-fg)", background: "var(--st-approved-bg)" }
                           : { color: "var(--st-pending-fg)", background: "var(--st-pending-bg)" }
                     }
                   >
-                    {p.role === "admin" ? "Admin" : p.pending_approval ? "Pending" : p.is_active ? "Active" : "Inactive"}
+                    {p.pending_approval ? "Pending" : !p.is_active ? "Deactivated" : isOnline(seen[p.id]) ? "Online" : "Offline"}
                   </span>
                 </div>
                 <div className={cx("mt-3 flex gap-2 md:mt-0 md:justify-end")}>

@@ -1,0 +1,168 @@
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { Siren } from "lucide-react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { useAuth, useNotifications, useTableChanges } from "./providers";
+import { Button } from "./ui";
+
+type Running = { id: string; title: string } | null;
+const PresenceCtx = createContext<{ runningTask: Running }>({ runningTask: null });
+export const usePresence = () => useContext(PresenceCtx);
+
+const HEARTBEAT_MS = 30_000;
+
+/**
+ * - Tells the server "this person has the app open" every 30 seconds.
+ * - Warns before the tab is closed while a task is running.
+ * - Shows a blocking reminder (with siren) until the member acknowledges it.
+ */
+export function PresenceProvider({ children }: { children: ReactNode }) {
+  const { profile } = useAuth();
+  const uid = profile?.id;
+  const [runningTask, setRunningTask] = useState<Running>(null);
+
+  // Heartbeat. Background tabs still fire timers (at least once a minute),
+  // so switching to another tab keeps the member online.
+  useEffect(() => {
+    if (!uid) return;
+    const sb = supabaseBrowser();
+    const beat = () => {
+      sb.rpc("heartbeat").then(() => {});
+    };
+    beat();
+    const id = setInterval(beat, HEARTBEAT_MS);
+    const onVisible = () => document.visibilityState === "visible" && beat();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", beat);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", beat);
+    };
+  }, [uid]);
+
+  const loadRunning = useCallback(async () => {
+    if (!uid) return;
+    const { data } = await supabaseBrowser().from("tasks").select("id,title").eq("user_id", uid).not("started_at", "is", null).limit(1);
+    setRunningTask(data && data.length ? (data[0] as Running) : null);
+  }, [uid]);
+  useEffect(() => {
+    loadRunning();
+  }, [loadRunning]);
+  useTableChanges(["tasks"], loadRunning, !!uid);
+
+  // Browser confirmation when closing or reloading the tab with a task running.
+  // Browsers show their own fixed wording here; custom text is not allowed.
+  const isRunning = !!runningTask;
+  useEffect(() => {
+    if (!isRunning) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "A task is running. If you close the app it will be discarded.";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isRunning]);
+
+  const value = useMemo(() => ({ runningTask }), [runningTask]);
+  return (
+    <PresenceCtx.Provider value={value}>
+      {children}
+      <ReminderGate />
+    </PresenceCtx.Provider>
+  );
+}
+
+/** Full-screen reminder that cannot be dismissed except by acknowledging it. */
+function ReminderGate() {
+  const { items, markRead } = useNotifications();
+  const pending = useMemo(() => items.filter((n) => n.type === "reminder" && !n.read_at), [items]);
+  const open = pending.length > 0;
+  const audio = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const a = new Audio("/sounds/reminder-siren.mp3");
+    a.loop = true;
+    audio.current = a;
+    let unlocked = false;
+    const tryPlay = () => {
+      a.play()
+        .then(() => {
+          unlocked = true;
+          window.removeEventListener("pointerdown", tryPlay);
+          window.removeEventListener("keydown", tryPlay);
+        })
+        .catch(() => {});
+    };
+    tryPlay();
+    // Browsers block sound until the page has been clicked at least once
+    // after loading; start the siren on the first interaction in that case.
+    if (!unlocked) {
+      window.addEventListener("pointerdown", tryPlay);
+      window.addEventListener("keydown", tryPlay);
+    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      a.pause();
+      audio.current = null;
+      window.removeEventListener("pointerdown", tryPlay);
+      window.removeEventListener("keydown", tryPlay);
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  function acknowledge() {
+    audio.current?.pause();
+    pending.forEach((n) => markRead(n.id));
+  }
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-backdrop p-4 backdrop-blur-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Reminder from admin"
+        >
+          <motion.div
+            className="card w-full max-w-[440px] overflow-hidden p-6 text-center sm:p-8"
+            style={{ borderColor: "var(--danger-line)" }}
+            initial={{ opacity: 0, y: 24, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 320, damping: 22 }}
+          >
+            <motion.span
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-danger-tint text-danger"
+              animate={{ rotate: [0, -12, 12, -8, 8, 0] }}
+              transition={{ duration: 0.9, repeat: Infinity, repeatDelay: 0.6 }}
+            >
+              <Siren size={30} />
+            </motion.span>
+            <h2 className="mt-5 text-2xl font-bold">Reminder from your admin</h2>
+            <div className="mt-3 flex flex-col gap-2">
+              {pending.slice(0, 3).map((n) => (
+                <p key={n.id} className="break-words text-sm text-ink">
+                  {n.body}
+                </p>
+              ))}
+            </div>
+            <p className="mt-3 text-[13px] text-muted">You need to acknowledge this to keep using the app.</p>
+            <Button variant="primary" className="mt-6 w-full" onClick={acknowledge} autoFocus>
+              Sorry, starting now
+            </Button>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}

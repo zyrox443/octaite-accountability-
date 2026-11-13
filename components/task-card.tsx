@@ -1,8 +1,8 @@
 "use client";
 
-import { Clock, Hourglass, MessageSquareWarning } from "lucide-react";
+import { Clock, Hourglass, MessageSquareWarning, Timer } from "lucide-react";
 import { fmtDateTime, fmtDuration, fmtHours, fmtTime, pkDate } from "@/lib/time";
-import { displayStatus, type Task } from "@/lib/types";
+import { displayStatus, workedSeconds, type Task } from "@/lib/types";
 import { Avatar, StatusBadge, cx, statusBar } from "./ui";
 
 export function timeWindow(t: Task) {
@@ -53,6 +53,19 @@ export function TaskCard({
               <Hourglass size={14} /> {fmtHours(task.estimated_hours)}h est.
             </span>
           </div>
+          {task.started_at ? (
+            <p className="mt-2 inline-flex items-center gap-2 text-[13px] font-semibold tnum" style={{ color: "var(--running)" }}>
+              <span className="live-dot" aria-hidden /> Running · {fmtDuration(workedSeconds(task) * 1000)}
+            </p>
+          ) : task.worked_seconds > 0 && (task.status === "pending" || task.status === "overdue") ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted tnum">
+              <Timer size={14} /> Paused · {fmtDuration(task.worked_seconds * 1000)} worked
+            </p>
+          ) : task.credited_hours != null && (task.status === "submitted" || task.status === "approved") ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted tnum">
+              <Timer size={14} /> {fmtHours(task.credited_hours)}h counted
+            </p>
+          ) : null}
           {overdue ? (
             <p className="mt-2 inline-flex items-center gap-2 text-[13px] font-semibold text-danger tnum">
               <span className="pulse-dot" aria-hidden /> {overdue}

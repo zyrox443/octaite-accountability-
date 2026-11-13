@@ -10,8 +10,8 @@ import { TaskDrawer } from "@/components/task-drawer";
 import { TaskFormModal } from "@/components/task-form";
 import { Avatar, Button, CountUp, ErrorState, ProgressRing, SectionTitle, Skeleton, StatCard, cx, stagger, staggerItem, useToast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { fmtDateTime, fmtHours, fmtLongDay, pkDate, pkHM } from "@/lib/time";
-import { normalizeTask, type Profile, type Settings, type Task } from "@/lib/types";
+import { fmtDateTime, fmtDuration, fmtHours, fmtLongDay, pkDate, pkHM } from "@/lib/time";
+import { isOnline, normalizeTask, workedSeconds, type Profile, type Settings, type Task } from "@/lib/types";
 
 function fmtCutoff(c: string) {
   const [h, m] = c.split(":").map(Number);
@@ -23,6 +23,7 @@ export default function AdminDashboard() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [people, setPeople] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [seen, setSeen] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -44,13 +45,15 @@ export default function AdminDashboard() {
 
   const load = useCallback(async () => {
     const sb = supabaseBrowser();
-    await sb.rpc("mark_overdue_tasks");
+    await Promise.all([sb.rpc("mark_overdue_tasks"), sb.rpc("discard_abandoned_tasks")]);
     const today = pkDate();
-    const [t, p, s] = await Promise.all([
-      sb.from("tasks").select("*").or(`task_date.eq.${today},status.in.(overdue,submitted)`).order("due_at"),
+    const [t, p, s, pr] = await Promise.all([
+      sb.from("tasks").select("*").or(`task_date.eq.${today},status.in.(overdue,submitted),started_at.not.is.null`).order("due_at"),
       sb.from("profiles").select("*").order("full_name"),
       sb.from("settings").select("*").eq("id", 1).single(),
+      sb.from("presence").select("user_id,last_seen_at"),
     ]);
+    setSeen(Object.fromEntries((pr.data ?? []).map((r) => [r.user_id, r.last_seen_at])));
     const err = t.error || p.error || s.error;
     if (err) return setError(err.message);
     setError(null);
@@ -61,7 +64,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 60000);
+    // Also refreshes who is online.
+    const id = setInterval(load, 30000);
     return () => clearInterval(id);
   }, [load]);
   useTableChanges(["tasks", "profiles"], load);
@@ -72,10 +76,12 @@ export default function AdminDashboard() {
   const list = tasks ?? [];
   const overdue = list.filter((t) => t.status === "overdue").sort((a, b) => a.due_at.localeCompare(b.due_at));
   const awaiting = list.filter((t) => t.status === "submitted");
-  const todays = list.filter((t) => t.task_date === today);
+  const todaysAll = list.filter((t) => t.task_date === today);
+  const todays = todaysAll.filter((t) => t.status !== "discarded");
+  const onlineCount = members.filter((m) => isOnline(seen[m.id])).length;
   const isoDow = ((new Date(`${today}T12:00:00+05:00`).getUTCDay() + 6) % 7) + 1;
   const pastCutoff = settings ? pkHM() >= settings.no_plan_cutoff.slice(0, 5) && settings.work_days.includes(isoDow) : false;
-  const noPlan = members.filter((m) => !todays.some((t) => t.user_id === m.id));
+  const noPlan = members.filter((m) => !todaysAll.some((t) => t.user_id === m.id));
   const openTask = list.find((t) => t.id === openId) ?? null;
   const doneToday = todays.filter((t) => t.status === "approved" || t.status === "submitted").length;
 
@@ -147,7 +153,7 @@ export default function AdminDashboard() {
               />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <StatCard icon={<Hourglass size={18} />} label="Hours planned today" value={todays.reduce((s, t) => s + t.estimated_hours, 0)} decimals={2} suffix="h" context={`${members.length - noPlan.length} of ${members.length} members planned`} />
+              <StatCard icon={<Hourglass size={18} />} label="Hours planned today" value={todays.reduce((s, t) => s + t.estimated_hours, 0)} decimals={2} suffix="h" context={`${onlineCount} of ${members.length} members online`} />
             </motion.div>
           </motion.div>
 
@@ -250,6 +256,9 @@ export default function AdminDashboard() {
                     { l: "Overdue", v: allOverdue, danger: true },
                   ];
                   const inReview = mine.filter((t) => t.status === "submitted").length;
+                  const online = isOnline(seen[m.id]);
+                  const runningTask = list.find((t) => t.user_id === m.id && t.started_at);
+                  const discardedToday = todaysAll.filter((t) => t.user_id === m.id && t.status === "discarded").length;
                   return (
                     <motion.div key={m.id} variants={staggerItem}>
                       <Link href={`/admin/team/${m.id}`} className="card lift block p-5">
@@ -259,7 +268,17 @@ export default function AdminDashboard() {
                             <p className="truncate text-sm font-semibold">{m.full_name}</p>
                             <p className="truncate text-xs text-muted">{m.title}</p>
                           </div>
-                          <ArrowRight size={16} className="flex-none text-muted" />
+                          <span
+                            className="inline-flex h-6 flex-none items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
+                            style={
+                              online
+                                ? { color: "var(--st-approved-fg)", background: "var(--st-approved-bg)" }
+                                : { color: "var(--st-pending-fg)", background: "var(--st-pending-bg)" }
+                            }
+                          >
+                            {online ? <span className="live-dot" aria-hidden /> : null}
+                            {online ? "Online" : "Offline"}
+                          </span>
                         </div>
                         <dl className="mt-4 grid grid-cols-4 gap-px overflow-hidden rounded-2xl border border-line bg-line">
                           {counts.map((c) => (
@@ -269,7 +288,15 @@ export default function AdminDashboard() {
                             </div>
                           ))}
                         </dl>
-                        <p className="mt-3 text-xs text-muted tnum">
+                        <p className="mt-3 truncate text-xs font-medium tnum" style={{ color: runningTask ? "var(--running)" : "var(--muted)" }}>
+                          {runningTask
+                            ? `Working on: ${runningTask.title} · ${fmtDuration(workedSeconds(runningTask) * 1000)}`
+                            : online
+                              ? "No task running"
+                              : "Not in the app"}
+                        </p>
+                        <p className="mt-1 text-xs text-muted tnum">
+                          {discardedToday ? `${discardedToday} discarded · ` : ""}
                           {mine.length === 0
                             ? "No tasks planned today"
                             : `${fmtHours(mine.reduce((s, t) => s + t.estimated_hours, 0))}h planned${inReview ? ` · ${inReview} awaiting approval` : ""}`}

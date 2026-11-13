@@ -11,6 +11,7 @@ A daily accountability app for a small team. Members plan their day, upload proo
 |---|---|
 | `supabase/migrations/20261110000000_init.sql` | The whole database: tables, security rules, storage bucket and policies, the 5-minute cron job |
 | `supabase/migrations/20261110010000_signup_reminders.sql` | Update 2: sign-up with approval, profile pictures, reminders |
+| `supabase/migrations/20261113000000_timers_presence.sql` | Update 3: task timers and actual hours, online status, auto-discard, siren reminders |
 | `supabase/go_live.sql` | Removes all sample data and creates your admin account |
 | `supabase/seed.sql` | Sample data: 1 admin, 4 members, sample tasks |
 | `.env.example` | The three keys the app needs |
@@ -42,7 +43,8 @@ pg_cron is what marks tasks as Overdue every 5 minutes.
 1. In the left sidebar open **SQL Editor** and click **New query**.
 2. Open `supabase/migrations/20261110000000_init.sql` from this folder, copy everything, paste it into the editor and click **Run**. You should see "Success".
 3. Click **New query** again and do the same with `supabase/migrations/20261110010000_signup_reminders.sql`.
-4. Click **New query** again. Copy everything from `supabase/seed.sql`, paste and **Run** (optional sample data).
+4. Click **New query** again and do the same with `supabase/migrations/20261113000000_timers_presence.sql`.
+5. Click **New query** again. Copy everything from `supabase/seed.sql`, paste and **Run** (optional sample data).
 
 Run the migration only once. If you ever need to start again, the simplest way is to create a fresh Supabase project.
 
@@ -153,8 +155,21 @@ Submitted -> Rejected -> back to Pending (or Overdue if the due time has passed)
 - "Rejected" is shown as a badge with the reason; in the database the task is back in Pending or Overdue.
 - The original due time is stored permanently next to the current due time and the actual completion time.
 
+### Task timer and actual hours
+- A member opens a task and clicks **Start task**. A timer runs; they can **Pause** and **Resume**. Only one task can run at a time.
+- A task cannot be submitted until its timer has been started.
+- Hours counted for the leaderboard = time on the timer, capped at the estimate. Example: estimate 6h, submitted after 4h of work, counts as 4h.
+
+### Online status and leaving the app
+- A member shows as **Online** only while they are signed in with the app open in a browser tab. Switching to other tabs is fine.
+- Closing the tab (or signing out) while a task is running shows a confirmation. If the app stays closed longer than the allowance in **Settings** (3 minutes by default), the running task becomes **Discarded**: it earns no hours, the admin is notified, and it stays on record on the member's page.
+- Pausing a task first lets a member close the app without losing it.
+
+### Reminders
+- **Remind** on the Dashboard makes the member's app play a siren and show a pop-up that blocks the app until they click **Sorry, starting now**.
+
 ### Overdue and "no plan" checks
-- pg_cron runs `run_scheduled_checks()` every 5 minutes. It marks late Pending tasks as Overdue and writes a notification for the admin (and the member).
+- pg_cron runs `run_scheduled_checks()` every minute. It marks late Pending tasks as Overdue and writes a notification for the admin (and the member).
 - The same check also runs whenever My Day or the Dashboard opens, so the screen is never stale.
 - After the cutoff time (11:00 AM PKT by default, editable in **Settings**) members with no tasks for today are listed under **No plan today** and the admin gets one alert per member per day. The alert only fires on the working days chosen in Settings (Monday to Saturday by default).
 
@@ -165,7 +180,7 @@ Submitted -> Rejected -> back to Pending (or Overdue if the due time has passed)
 - Everyone can change their own picture, name and password under the avatar menu > **Edit profile**.
 
 ### Leaderboard
-- Hours = the sum of estimated hours of **approved** tasks only.
+- Hours = the sum of counted hours (time worked, capped at the estimate) of **approved** tasks only.
 - A task counts in the week or month in which the member **submitted** it, so a slow approval never moves hours into a different period.
 - On-time % = approved tasks that were submitted before their due time.
 

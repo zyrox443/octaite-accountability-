@@ -29,7 +29,7 @@ export default function MyDayPage() {
       .from("tasks")
       .select("*")
       .eq("user_id", uid)
-      .or(`status.neq.approved,task_date.eq.${today}`)
+      .or(`status.not.in.(approved,discarded),task_date.eq.${today}`)
       .order("due_at");
     if (err) return setError(err.message);
     setError(null);
@@ -49,14 +49,16 @@ export default function MyDayPage() {
     const list = tasks ?? [];
     const isDue = (t: Task) =>
       t.status !== "approved" &&
+      t.status !== "discarded" &&
       (t.status === "overdue" || !!t.went_overdue_at || (!!t.rejection_reason && t.status === "pending"));
     const due = list.filter(isDue);
-    const todays = list.filter((t) => !isDue(t) && t.task_date === today);
-    const other = list.filter((t) => !isDue(t) && t.task_date !== today);
-    return { due, todays, other };
+    const discarded = list.filter((t) => t.status === "discarded");
+    const todays = list.filter((t) => !isDue(t) && t.status !== "discarded" && t.task_date === today);
+    const other = list.filter((t) => !isDue(t) && t.status !== "discarded" && t.task_date !== today);
+    return { due, todays, other, discarded };
   }, [tasks, today]);
 
-  const todayAll = (tasks ?? []).filter((t) => t.task_date === today);
+  const todayAll = (tasks ?? []).filter((t) => t.task_date === today && t.status !== "discarded");
   const stats = {
     planned: todayAll.length,
     hours: todayAll.reduce((s, t) => s + t.estimated_hours, 0),
@@ -68,7 +70,15 @@ export default function MyDayPage() {
   const hm = pkHM();
   const greeting = hm < "12:00" ? "Good morning" : hm < "17:00" ? "Good afternoon" : "Good evening";
   const action = (t: Task) =>
-    t.status === "pending" || t.status === "overdue" ? (t.rejection_reason ? "Resubmit proof" : "Submit proof") : "View";
+    t.status === "pending" || t.status === "overdue"
+      ? t.started_at
+        ? "Open running task"
+        : t.rejection_reason
+          ? "Resubmit proof"
+          : t.worked_seconds > 0
+            ? "Resume or submit"
+            : "Start task"
+      : "View";
 
   return (
     <div>
@@ -179,6 +189,14 @@ export default function MyDayPage() {
           ) : null}
         </>
       )}
+
+      {tasks && groups.discarded.length > 0 ? (
+        <section className="mt-8">
+          <SectionTitle count={groups.discarded.length}>Discarded today</SectionTitle>
+          <p className="-mt-1 mb-3 text-[13px] text-muted">These were running when the app was closed. Add the task again if you still need to do it.</p>
+          <TaskList tasks={groups.discarded} onOpen={setOpenId} action={action} />
+        </section>
+      ) : null}
 
       <TaskFormModal open={adding} onClose={() => setAdding(false)} onSaved={load} userId={uid} />
       <TaskDrawer task={openTask} mode="member" currentUserId={uid} onClose={() => setOpenId(null)} onChanged={load} />

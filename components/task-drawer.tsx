@@ -1,12 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ExternalLink, FileText, Film, Link2, Pencil, Trash2, UploadCloud, X } from "lucide-react";
+import { Check, ExternalLink, FileText, Film, Link2, Pause, Pencil, Play, Trash2, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addProofLink, removeProof, signProofs, uploadProofFile, MAX_FILE_BYTES } from "@/lib/proofs";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { fmtBytes, fmtDateTime, fmtDuration, fmtHours } from "@/lib/time";
-import { displayStatus, type Profile, type Task, type TaskProof } from "@/lib/types";
+import { displayStatus, workedSeconds, type Profile, type Task, type TaskProof } from "@/lib/types";
 import { overdueText } from "./task-card";
 import { Avatar, Button, Drawer, Field, Skeleton, StatusBadge, cx, inputClass, useToast } from "./ui";
 
@@ -40,7 +40,8 @@ export function TaskDrawer({
   const [link, setLink] = useState("");
   const [linkError, setLinkError] = useState("");
   const [submitError, setSubmitError] = useState("");
-  const [busy, setBusy] = useState<"" | "submit" | "approve" | "reject" | "delete" | "link">("");
+  const [busy, setBusy] = useState<"" | "submit" | "approve" | "reject" | "delete" | "link" | "timer">("");
+  const [, setTick] = useState(0);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState("");
@@ -70,6 +71,24 @@ export function TaskDrawer({
     setNote(taskId ? (noteDrafts.get(taskId) ?? "") : "");
     if (taskId) loadProofs(taskId);
   }, [taskId, loadProofs]);
+
+  // Live timer display while the task is running.
+  const running = !!task?.started_at;
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+
+  async function toggleTimer() {
+    if (!task) return;
+    setBusy("timer");
+    const { error } = await supabaseBrowser().rpc(task.started_at ? "pause_task" : "start_task", { p_task_id: task.id });
+    setBusy("");
+    if (error) return toast({ title: task.started_at ? "Could not pause" : "Could not start", body: error.message, tone: "error" });
+    setSubmitError("");
+    onChanged();
+  }
 
   const isOwner = !!task && task.user_id === currentUserId;
   const canSubmit = !!task && isOwner && (task.status === "pending" || task.status === "overdue");
@@ -124,6 +143,10 @@ export function TaskDrawer({
 
   async function submit() {
     if (!task) return;
+    if (workedSeconds(task) <= 0) {
+      setSubmitError("Start the task first so your working time is recorded.");
+      return;
+    }
     if (!proofs || proofs.length === 0) {
       setSubmitError("Attach at least one file or link as proof of work.");
       return;
@@ -261,7 +284,41 @@ export function TaskDrawer({
             </div>
           </div>
 
-          {task.rejection_reason && task.status !== "approved" && task.status !== "submitted" ? (
+          {canSubmit ? (
+            <div
+              className="flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between"
+              style={running ? { borderColor: "var(--running)", background: "var(--success-tint)" } : { borderColor: "var(--line)", background: "var(--surface-2)" }}
+            >
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: running ? "var(--running)" : "var(--muted)" }}>
+                  {running ? <span className="live-dot" aria-hidden /> : null}
+                  {running ? "Task running" : task.worked_seconds > 0 ? "Paused" : "Not started"}
+                </p>
+                <p className="mt-1 text-[28px] font-bold leading-none tracking-tight tnum">{fmtClock(workedSeconds(task))}</p>
+                <p className="mt-1.5 text-xs text-muted">
+                  {running
+                    ? "Keep this app open. If you close it while the task is running, the task is discarded."
+                    : "Only time on the timer counts for the leaderboard, up to the estimate."}
+                </p>
+              </div>
+              <Button variant={running ? "secondary" : "primary"} onClick={toggleTimer} loading={busy === "timer"} className="flex-none">
+                {running ? <Pause size={16} /> : <Play size={16} />}
+                {running ? "Pause" : task.worked_seconds > 0 ? "Resume" : "Start task"}
+              </Button>
+            </div>
+          ) : null}
+
+          {task.status === "discarded" ? (
+            <div className="rounded-2xl border border-line bg-surface-2 p-4" role="alert">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Discarded</p>
+              <p className="mt-1 text-sm">
+                The app was closed while this task was running, so it was discarded
+                {task.discarded_at ? ` on ${fmtDateTime(task.discarded_at, true)}` : ""}. It earns no hours.
+              </p>
+            </div>
+          ) : null}
+
+          {task.rejection_reason && task.status !== "approved" && task.status !== "submitted" && task.status !== "discarded" ? (
             <div className="rounded-2xl border border-danger-line bg-danger-tint p-4" role="alert">
               <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-danger">Rejected by admin</p>
               <p className="mt-1 break-words text-sm text-ink">{task.rejection_reason}</p>
@@ -291,6 +348,9 @@ export function TaskDrawer({
                 }
                 danger={task.completed_late}
               />
+            ) : null}
+            {task.credited_hours != null ? (
+              <Meta label="Hours counted" value={`${fmtHours(task.credited_hours)}h`} note={`${fmtDuration(task.worked_seconds * 1000)} on the timer`} />
             ) : null}
             {task.approved_at ? <Meta label="Approved" value={fmtDateTime(task.approved_at, true)} /> : null}
           </dl>
@@ -440,6 +500,13 @@ export function TaskDrawer({
       ) : null}
     </Drawer>
   );
+}
+
+function fmtClock(total: number) {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 function Meta({ label, value, note, danger }: { label: string; value: string; note?: string; danger?: boolean }) {

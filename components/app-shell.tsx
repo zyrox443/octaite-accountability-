@@ -1,14 +1,16 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, CheckCheck, LogOut, Menu, Moon, Sun, UserRound, X } from "lucide-react";
+import { Bell, CheckCheck, LogOut, Menu, Moon, Sun, Trash2, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { fmtRelative } from "@/lib/time";
 import type { Notification } from "@/lib/types";
 import { AuthProvider, NotificationsProvider, useAuth, useNotifications, useTheme } from "./providers";
-import { Avatar, ErrorState, IconButton, Skeleton, cx } from "./ui";
+import { PresenceProvider, usePresence } from "./presence";
+import { Avatar, Button, ErrorState, IconButton, Modal, Skeleton, cx } from "./ui";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 const memberLinks = [
   { href: "/my-day", label: "My Day" },
@@ -30,7 +32,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <NotificationsProvider>
-        <Shell>{children}</Shell>
+        <PresenceProvider>
+          <Shell>{children}</Shell>
+        </PresenceProvider>
       </NotificationsProvider>
     </AuthProvider>
   );
@@ -90,8 +94,52 @@ export function ShellSkeleton() {
   );
 }
 
+/** Asks before signing out while a task is running, because it would be discarded. */
+function useGuardedSignOut() {
+  const { signOut } = useAuth();
+  const { runningTask } = usePresence();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const request = () => (runningTask ? setAsking(true) : signOut());
+  const dialog = (
+    <Modal
+      open={asking}
+      onClose={() => setAsking(false)}
+      title="A task is still running"
+      width={460}
+      footer={
+        <>
+          <Button onClick={() => setAsking(false)}>Stay</Button>
+          <Button variant="danger" onClick={signOut}>
+            Sign out anyway
+          </Button>
+          <Button
+            variant="primary"
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              if (runningTask) await supabaseBrowser().rpc("pause_task", { p_task_id: runningTask.id });
+              await signOut();
+            }}
+          >
+            Pause task and sign out
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm">
+        <span className="font-semibold">{runningTask?.title}</span> is running. If you leave the app while it is running, the task will be
+        discarded and you will have to add it again.
+      </p>
+      <p className="mt-2 text-[13px] text-muted">Pause it first to keep the time you have worked.</p>
+    </Modal>
+  );
+  return { request, dialog };
+}
+
 function TopNav() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
+  const { request: signOut, dialog: signOutDialog } = useGuardedSignOut();
   const path = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const links = profile ? (profile.role === "admin" ? [adminLinks[0], adminLinks[1], adminLinks[2], memberLinks[1], adminLinks[3]] : memberLinks) : [];
@@ -143,7 +191,7 @@ function TopNav() {
         <div className="ml-auto flex items-center lg:ml-0">
           {profile ? <NotificationBell /> : null}
           <ThemeToggle />
-          {profile ? <UserMenu className="hidden lg:block" /> : null}
+          {profile ? <UserMenu className="hidden lg:block" onSignOut={signOut} /> : null}
           <IconButton label="Open menu" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen}>
             <Menu size={20} />
           </IconButton>
@@ -218,6 +266,7 @@ function TopNav() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+      {signOutDialog}
     </header>
   );
 }
@@ -260,8 +309,12 @@ function useClickOutside(open: boolean, close: () => void) {
   return ref;
 }
 
-function UserMenu({ className }: { className?: string }) {
-  const { profile, signOut } = useAuth();
+function UserMenu({ className, onSignOut }: { className?: string; onSignOut: () => void }) {
+  const { profile } = useAuth();
+  const signOut = () => {
+    setOpen(false);
+    onSignOut();
+  };
   const [open, setOpen] = useState(false);
   const ref = useClickOutside(open, () => setOpen(false));
   if (!profile) return null;
@@ -308,6 +361,7 @@ function UserMenu({ className }: { className?: string }) {
 function notifHref(n: Notification, admin: boolean) {
   if (!admin) return "/my-day";
   if (n.type === "signup_request") return "/admin/team";
+  if (n.type === "task_discarded" && n.subject_user_id) return `/admin/team/${n.subject_user_id}`;
   if (n.type === "task_submitted") return "/admin/approvals";
   if (n.type === "no_plan" && n.subject_user_id) return `/admin/team/${n.subject_user_id}`;
   return "/admin";
@@ -315,7 +369,7 @@ function notifHref(n: Notification, admin: boolean) {
 
 function NotificationBell() {
   const { profile } = useAuth();
-  const { items, unread, shake, markRead, markAllRead } = useNotifications();
+  const { items, unread, shake, markRead, markAllRead, clearAll } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useClickOutside(open, () => setOpen(false));
   const router = useRouter();
@@ -362,13 +416,22 @@ function NotificationBell() {
           >
             <div className="flex items-center justify-between border-b border-line py-1 pl-4 pr-1">
               <span className="text-sm font-semibold">Notifications</span>
-              <button
-                onClick={markAllRead}
-                disabled={!unread}
-                className="flex min-h-11 items-center gap-1.5 px-3 text-[13px] font-medium text-accent-ink disabled:text-muted disabled:opacity-60"
-              >
-                <CheckCheck size={15} /> Mark all read
-              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={markAllRead}
+                  disabled={!unread}
+                  className="flex min-h-11 items-center gap-1.5 px-2.5 text-[13px] font-medium text-accent-ink disabled:text-muted disabled:opacity-60"
+                >
+                  <CheckCheck size={15} /> Mark all read
+                </button>
+                <button
+                  onClick={clearAll}
+                  disabled={!items.length}
+                  className="flex min-h-11 items-center gap-1.5 px-2.5 text-[13px] font-medium text-muted hover:text-danger disabled:opacity-60"
+                >
+                  <Trash2 size={14} /> Clear all
+                </button>
+              </div>
             </div>
             <div className="overflow-y-auto">
               {items.length === 0 ? (

@@ -13,7 +13,7 @@ import { Avatar, Button, EmptyState, ErrorState, Field, Skeleton, StatCard, Stat
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { addDays, fmtDateTime, fmtDay, fmtHours, pkDate } from "@/lib/time";
 import { downloadCsv, downloadPdf } from "@/lib/report";
-import { displayStatus, normalizeTask, type Profile, type Task } from "@/lib/types";
+import { countedHours, displayStatus, normalizeTask, type Profile, type Task } from "@/lib/types";
 
 function weekStart(d: string) {
   const dow = new Date(`${d}T12:00:00+05:00`).getUTCDay(); // 0 = Sunday
@@ -71,7 +71,8 @@ export default function EmployeeDetailPage() {
     const finished = list.filter((t) => t.status === "approved" || t.status === "submitted");
     return {
       total: list.length,
-      hours: approved.reduce((s, t) => s + t.estimated_hours, 0),
+      hours: approved.reduce((s, t) => s + countedHours(t), 0),
+      discarded: list.filter((t) => t.status === "discarded").length,
       planned: list.reduce((s, t) => s + t.estimated_hours, 0),
       onTime: finished.filter((t) => !t.completed_late).length,
       late: finished.filter((t) => t.completed_late).length,
@@ -190,7 +191,7 @@ export default function EmployeeDetailPage() {
         <>
           <motion.div key={`${id}-${from}-${to}`} variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <motion.div variants={staggerItem}>
-              <StatCard primary label="Approved hours" value={stats.hours} decimals={2} suffix="h" context={`of ${fmtHours(stats.planned)}h planned`} />
+              <StatCard primary label="Approved hours" value={stats.hours} decimals={2} suffix="h" context={`worked, of ${fmtHours(stats.planned)}h estimated`} />
             </motion.div>
             <motion.div variants={staggerItem}>
               <StatCard label="Tasks" value={stats.total} context={`${stats.approved} approved`} />
@@ -199,7 +200,7 @@ export default function EmployeeDetailPage() {
               <StatCard label="On time" value={stats.onTime} context={stats.onTime + stats.late ? `${Math.round((stats.onTime / (stats.onTime + stats.late)) * 100)}% of completed` : "Nothing completed yet"} />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <StatCard label="Late" value={stats.late} tone="danger" context={stats.overdue ? `${stats.overdue} still overdue` : "None currently overdue"} />
+              <StatCard label="Late" value={stats.late} tone="danger" context={`${stats.overdue} overdue · ${stats.discarded} discarded`} />
             </motion.div>
           </motion.div>
 
@@ -213,11 +214,11 @@ export default function EmployeeDetailPage() {
                   <table className="w-full table-fixed text-left text-sm">
                     <thead>
                       <tr className="border-b border-line text-xs font-medium text-muted">
-                        <th className="w-[34%] px-5 py-2.5 font-medium">Task</th>
+                        <th className="w-[32%] px-5 py-2.5 font-medium">Task</th>
                         <th className="w-[12%] px-3 py-2.5 font-medium">Date</th>
                         <th className="w-[16%] px-3 py-2.5 font-medium">Due</th>
                         <th className="w-[16%] px-3 py-2.5 font-medium">Completed</th>
-                        <th className="w-[7%] px-3 py-2.5 text-right font-medium">Hours</th>
+                        <th className="w-[9%] px-3 py-2.5 text-right font-medium">Hours</th>
                         <th className="w-[15%] px-5 py-2.5 text-right font-medium">Status</th>
                       </tr>
                     </thead>
@@ -239,7 +240,9 @@ export default function EmployeeDetailPage() {
                           <td className={cx("px-3 py-3 tnum", t.completed_late ? "text-danger" : t.submitted_at ? "" : "text-muted")}>
                             {t.submitted_at ? fmtDateTime(t.submitted_at, true) : "-"}
                           </td>
-                          <td className="px-3 py-3 text-right tnum">{fmtHours(t.estimated_hours)}</td>
+                          <td className="px-3 py-3 text-right tnum">
+                            {t.credited_hours != null ? `${fmtHours(t.credited_hours)} / ${fmtHours(t.estimated_hours)}` : fmtHours(t.estimated_hours)}
+                          </td>
                           <td className="px-5 py-3">
                             <span className="flex justify-end">
                               <StatusBadge status={displayStatus(t)} late={t.completed_late} />

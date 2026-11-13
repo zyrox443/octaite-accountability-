@@ -1,5 +1,5 @@
 export type Role = "admin" | "member";
-export type TaskStatus = "pending" | "submitted" | "approved" | "overdue";
+export type TaskStatus = "pending" | "submitted" | "approved" | "overdue" | "discarded";
 export type DisplayStatus = TaskStatus | "rejected";
 
 export interface Profile {
@@ -33,6 +33,11 @@ export interface Task {
   rejection_reason: string | null;
   rejected_at: string | null;
   rejection_count: number;
+  started_at: string | null;
+  first_started_at: string | null;
+  worked_seconds: number;
+  credited_hours: number | null;
+  discarded_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -53,7 +58,7 @@ export interface TaskProof {
 export interface Notification {
   id: string;
   recipient_id: string;
-  type: "task_overdue" | "task_submitted" | "task_approved" | "task_rejected" | "no_plan" | "reminder" | "signup_request";
+  type: "task_overdue" | "task_submitted" | "task_approved" | "task_rejected" | "no_plan" | "reminder" | "signup_request" | "task_discarded";
   task_id: string | null;
   subject_user_id: string | null;
   title: string;
@@ -68,6 +73,7 @@ export interface Settings {
   timezone: string;
   no_plan_cutoff: string;
   work_days: number[];
+  offline_grace_minutes: number;
 }
 
 export interface LeaderRow {
@@ -89,7 +95,12 @@ export function displayStatus(t: Pick<Task, "status" | "rejection_reason">): Dis
 }
 
 export function normalizeTask(t: Task): Task {
-  return { ...t, estimated_hours: Number(t.estimated_hours) };
+  return {
+    ...t,
+    estimated_hours: Number(t.estimated_hours),
+    credited_hours: t.credited_hours == null ? null : Number(t.credited_hours),
+    worked_seconds: Number(t.worked_seconds ?? 0),
+  };
 }
 
 /** Job roles are stored as one comma-separated string, e.g. "Video Editor, AI Engineer". */
@@ -102,4 +113,18 @@ export function splitRoles(title: string | null | undefined): string[] {
 }
 export function joinRoles(roles: string[]): string {
   return Array.from(new Set(roles.map((r) => r.trim()).filter(Boolean))).join(", ");
+}
+
+/** Seconds worked so far, including the current run if the timer is on. */
+export function workedSeconds(t: Pick<Task, "worked_seconds" | "started_at">, now = Date.now()): number {
+  const running = t.started_at ? Math.max(0, Math.floor((now - new Date(t.started_at).getTime()) / 1000)) : 0;
+  return (t.worked_seconds ?? 0) + running;
+}
+/** Hours that count for this task: actual credited hours once submitted, else the estimate. */
+export function countedHours(t: Pick<Task, "credited_hours" | "estimated_hours">): number {
+  return t.credited_hours ?? t.estimated_hours;
+}
+export const ONLINE_WINDOW_MS = 90_000;
+export function isOnline(lastSeen: string | null | undefined, now = Date.now()): boolean {
+  return !!lastSeen && now - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS;
 }

@@ -33,6 +33,10 @@
   --st-overdue-fg: #b91c1c;
   --st-overdue-bg: #fee2e2;
   --st-overdue-bar: #dc2626;
+  --st-discarded-fg: #57534e;
+  --st-discarded-bg: #e7e5e4;
+  --st-discarded-bar: #a8a29e;
+  --running: #15803d;
   --backdrop: rgba(28, 25, 23, 0.4);
   --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04), 0 6px 16px -8px rgba(28, 25, 23, 0.1);
   --shadow-md: 0 2px 4px rgba(28, 25, 23, 0.05), 0 18px 36px -16px rgba(28, 25, 23, 0.22);
@@ -74,6 +78,10 @@
   --st-overdue-fg: #fca5a5;
   --st-overdue-bg: rgba(239, 68, 68, 0.16);
   --st-overdue-bar: #ef4444;
+  --st-discarded-fg: #d6d3d1;
+  --st-discarded-bg: rgba(168, 162, 158, 0.18);
+  --st-discarded-bar: #78716c;
+  --running: #4ade80;
   --backdrop: rgba(0, 0, 0, 0.6);
   --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 20px -12px rgba(0, 0, 0, 0.7);
   --shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 20px 40px -16px rgba(0, 0, 0, 0.85);
@@ -201,6 +209,26 @@ input[type="time"] {
     opacity: 0.45;
   }
 }
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 9999px;
+  background: var(--running);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--running) 60%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
 .skeleton {
   border-radius: 20px;
   background: var(--surface-2);
@@ -304,6 +332,7 @@ input[type="time"] {
 
 @media (prefers-reduced-motion: reduce) {
   .pulse-dot,
+  .live-dot,
   .skeleton,
   .float-slow,
   .float-slower {

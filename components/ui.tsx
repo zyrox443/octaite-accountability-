@@ -154,6 +154,7 @@ const statusLabel: Record<DisplayStatus, string> = {
   approved: "Approved",
   overdue: "Overdue",
   rejected: "Rejected",
+  discarded: "Discarded",
 };
 
 export function statusBar(status: DisplayStatus): string {
